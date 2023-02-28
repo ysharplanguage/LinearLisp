@@ -1,0 +1,697 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Symbolics;
+using System.Text.RegularExpressions;
+namespace System.Symbolics
+{
+    public sealed class Linear { public readonly int[] Nodes; public readonly object[] Value; public readonly Evaluation[] Wired; public Linear(int[] nodes, object[] value, Evaluation[] wired) { Nodes = nodes; Value = value; Wired = wired; } }
+    public interface IEnvironment
+    {
+        object Get(Symbol symbol);
+        bool Knows(Symbol symbol);
+        IEnvironment Set(Symbol symbol, object value, bool outerLookup = false);
+        IEnvironment Parent { get; }
+        Global Global { get; }
+    }
+    public sealed class Formal1 : IEnvironment
+    {
+        private Symbol symbol; private object value;
+        public Formal1(Symbol[] parameters, IEnvironment parent) { symbol = parameters[0]; Parent = parent; }
+        public Formal1(Symbol[] parameters, object[] values, IEnvironment parent) { symbol = parameters[0]; value = values[0]; Parent = parent; }
+        public object Get(Symbol symbol) => 0 < symbol.Id && symbol.Equals(this.symbol) ? value : Parent.Get(symbol);
+        public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id && symbol.Equals(this.symbol)) { this.value = value; return this; } Parent.Set(symbol, value, outerLookup); return this; }
+        public void Set(int index, object value) => this.value = value;
+        public IEnvironment Parent { get; }
+        public Global Global => Parent.Global;
+    }
+    public sealed class Formal2 : IEnvironment
+    {
+        private readonly Symbol[] symbols; private readonly object[] values = new object[2];
+        public Formal2(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
+        public Formal2(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 2) this.values[i] = values[i]; Parent = parent; }
+        public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 2) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
+        public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 2; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
+        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Parent { get; }
+        public Global Global => Parent.Global;
+    }
+    public sealed class Formal3 : IEnvironment
+    {
+        private readonly Symbol[] symbols; private readonly object[] values = new object[3];
+        public Formal3(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
+        public Formal3(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 3) this.values[i] = values[i]; Parent = parent; }
+        public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 3) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
+        public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 3; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
+        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Parent { get; }
+        public Global Global => Parent.Global;
+    }
+    public sealed class Formal4 : IEnvironment
+    {
+        private readonly Symbol[] symbols; private readonly object[] values = new object[4];
+        public Formal4(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
+        public Formal4(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 4) this.values[i] = values[i]; Parent = parent; }
+        public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 4) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
+        public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 4; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
+        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Parent { get; }
+        public Global Global => Parent.Global;
+    }
+    public sealed class Formal5 : IEnvironment
+    {
+        private readonly Symbol[] symbols; private readonly object[] values = new object[5];
+        public Formal5(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
+        public Formal5(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 5) this.values[i] = values[i]; Parent = parent; }
+        public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 5) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
+        public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 5; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
+        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Parent { get; }
+        public Global Global => Parent.Global;
+    }
+    public readonly struct Symbol : IEquatable<Symbol>
+    {
+        public static readonly Symbol Undefined = default, Open = new Symbol(-1), Close = new Symbol(-2), Quote = new Symbol(-3), Let = new Symbol(-4), Lambda = new Symbol(-5), EOF = new Symbol(int.MaxValue); public readonly int Id;
+        public Symbol(int id) => Id = id;
+        public int Class => 0 < Id ? Id >> 24 : -1;
+        public int Index => 0 < Id ? Id & ((1 << 24) - 1) : -Id;
+        public bool Equals(Symbol other) => other.Id == Id;
+        public override bool Equals(object obj) => obj is Symbol symbol && Equals(symbol);
+        public override int GetHashCode() => Id;
+        public override string ToString() => $"{{{nameof(Symbol)}({$"{Class}:{(0 < Id ? Index : Id)}"})}}";
+    }
+    public class SymbolProvider : List<string>
+    {
+        private class BuiltinComparer : IComparer<string> { public int Compare(string left, string right) => !ReferenceEquals(left, right) || (string.CompareOrdinal(left, right) != 0) ? (left.Length < right.Length ? 1 : -1) : 0; }
+        private readonly IDictionary<string, Symbol> symbols = new Dictionary<string, Symbol>(); private long uniqueId = -1;
+        public const string Open = "(", Close = ")", Quote = "`", Let = "let", Lambda = "=>"; public readonly ISet<string> Builtins = new SortedSet<string>(new BuiltinComparer());
+        public SymbolProvider(string[] core = null) { core = core ?? new[] { string.Empty, Open, Close, Quote, Let, Lambda }; for (var at = 0; at < core.Length; at++) Builtin(core[at], out _); }
+        public SymbolProvider Builtin(string name, out Symbol builtin) { builtin = Get(name, -1); return this; }
+        public Symbol Builtin(string literal, int startAt = -1) { bool Matches(string input, string value, int at) { var from = at; at = 0; while (from < input.Length && at < value.Length && input[from] == value[at]) { from++; at++; } return at == value.Length; } foreach (var name in Builtins) { if (name.Length > 0 && ((startAt >= 0 && Matches(literal, name, startAt)) || literal == name) && symbols[name].Id < 0) { return symbols[name]; } } return Symbol.Undefined; }
+        public Symbol Get(string name, int symbolClass = 0) { if (!symbols.TryGetValue(name, out var symbol)) { symbol = new Symbol(symbolClass < 0 ? -symbols.Count : (symbolClass << 24) | symbols.Count); if (symbolClass < 0) Builtins.Add(name); symbols.Add(name, symbol); Add(name); } return symbol; }
+        public Symbol Unique(string prefix) => Get($"{prefix}{Threading.Interlocked.Increment(ref uniqueId)}");
+        public string NameOf(Symbol symbol) => this[symbol.Index];
+    }
+    public class Environment : Dictionary<Symbol, object>, IEnvironment
+    {
+        public static readonly object[] Empty = new object[0];
+        public static IEnumerable<object> Sequence(object value, bool required = false) { bool TryGetSequence(object candidate, out IEnumerable<object> sequence) => ((sequence = candidate as object[]) ?? (sequence = candidate as IEnumerable<object>) ?? (sequence = candidate as Collections.IEnumerable != null ? ((Collections.IEnumerable)candidate).Cast<object>() : null)) != null; return TryGetSequence(value, out var found) ? found : !required ? null : throw new Exception($"Not a sequence: {nameof(value)}"); }
+        public Environment(IEnvironment parent) => Global = (Parent = parent)?.Global ?? (Global)this;
+        public virtual object Get(Symbol symbol) => symbol.Id <= 0 ? (-symbol.Id < Global.Builtins.Count ? Global.Builtins[-symbol.Id] : Symbol.Undefined) : TryGetValue(symbol, out var value) ? value : Parent != null ? Parent.Get(symbol) : Symbol.Undefined;
+        public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
+        public virtual IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { if (ContainsKey(symbol)) this[symbol] = value; else Parent.Set(symbol, value, outerLookup); } if (symbol.Id < 0) Global.Set(symbol, value); return this; }
+        public object[] Params(object[] args, int at) { var result = args.Length > at ? new object[args.Length - at] : Empty; for (var i = at; i < args.Length; i++) result[i - at] = args[i]; return result; }
+        public IEnvironment Parent { get; }
+        public Global Global { get; }
+    }
+    public sealed class Global : Environment
+    {
+        private object[] builtins = new object[3] { null, null, null };
+        public Global(SymbolProvider symbolProvider) : base(null) => SymbolProvider = symbolProvider ?? throw new ArgumentNullException(nameof(symbolProvider), "Cannot be null");
+        public override object Get(Symbol symbol) => symbol.Id <= 0 ? (-symbol.Id < builtins.Length ? builtins[-symbol.Id] : Symbol.Undefined) : TryGetValue(symbol, out var value) ? value : Symbol.Undefined;
+        public override IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (symbol.Id < 0) { var at = -symbol.Id; var upto = at + 1; if (upto > builtins.Length) Array.Resize(ref builtins, upto); builtins[at] = value; } if (0 < symbol.Id) this[symbol] = value; return this; }
+        public SymbolProvider SymbolProvider { get; }
+        public IReadOnlyList<object> Builtins => builtins;
+    }
+    public delegate object Inline(IEnvironment site, int at);
+    public delegate object Invoke(params object[] arguments);
+    public sealed class Closure : LinearEvaluator
+    {
+        private readonly Inline[] inlined; private readonly Invoke[] invoked; private readonly Linear linear; public readonly IEnvironment Environment; public readonly Symbol[] Parameters; public readonly int Body;
+        private object Inline0(IEnvironment site, int at) => Evaluate(new Environment(Environment), linear, Body);
+        private object Inline1(IEnvironment site, int at)
+        {
+            var parameters = Parameters;
+            var bound = new Formal1(parameters, Environment);
+            bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at]));
+            return Evaluate(bound, linear, Body);
+        }
+        private object Inline2(IEnvironment site, int at)
+        {
+            var parameters = Parameters;
+            var bound = new Formal2(parameters, Environment);
+            var nodes = linear.Nodes;
+            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(1, Evaluate(site, linear, at + nodes[at]));
+            return Evaluate(bound, linear, Body);
+        }
+        private object Inline3(IEnvironment site, int at)
+        {
+            var parameters = Parameters;
+            var bound = new Formal3(parameters, Environment);
+            var nodes = linear.Nodes;
+            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(1, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(2, Evaluate(site, linear, at + nodes[at]));
+            return Evaluate(bound, linear, Body);
+        }
+        private object Inline4(IEnvironment site, int at)
+        {
+            var parameters = Parameters;
+            var bound = new Formal4(parameters, Environment);
+            var nodes = linear.Nodes;
+            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(1, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(2, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(3, Evaluate(site, linear, at + nodes[at]));
+            return Evaluate(bound, linear, Body);
+        }
+        private object Inline5(IEnvironment site, int at)
+        {
+            var parameters = Parameters;
+            var bound = new Formal5(parameters, Environment);
+            var nodes = linear.Nodes;
+            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(1, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(2, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(3, Evaluate(site, linear, at + nodes[at++]));
+            bound.Set(4, Evaluate(site, linear, at + nodes[at]));
+            return Evaluate(bound, linear, Body);
+        }
+        internal object Invoke0(params object[] arguments) => Evaluate(new Environment(Environment), linear, Body);
+        internal object Invoke1(params object[] arguments) => Evaluate(new Formal1(Parameters, arguments, Environment), linear, Body);
+        internal object Invoke2(params object[] arguments) => Evaluate(new Formal2(Parameters, arguments, Environment), linear, Body);
+        internal object Invoke3(params object[] arguments) => Evaluate(new Formal3(Parameters, arguments, Environment), linear, Body);
+        internal object Invoke4(params object[] arguments) => Evaluate(new Formal4(Parameters, arguments, Environment), linear, Body);
+        internal object Invoke5(params object[] arguments) => Evaluate(new Formal5(Parameters, arguments, Environment), linear, Body);
+        internal object Inline(IEnvironment site, int at, int arity) => inlined[arity](site, at);
+        public Closure(IEnvironment environment, Symbol[] parameters, Linear linear, int at) { inlined = new Inline[6] { Inline0, Inline1, Inline2, Inline3, Inline4, Inline5 }; invoked = new Invoke[6] { Invoke0, Invoke1, Invoke2, Invoke3, Invoke4, Invoke5 }; this.linear = linear; Environment = environment; Parameters = parameters; Body = at; }
+        public object Invoke(params object[] arguments) => invoked[arguments.Length](arguments);
+    }
+    public delegate object Evaluation(IEnvironment environment, Linear linear, int at);
+    public class LinearEvaluator
+    {
+        protected static object Rehydrate(Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var it = at;
+            if (0 < nodes[it++])
+            {
+                var length = nodes[it];
+                var array = new object[length];
+                var arg = it;
+                var i = 0;
+                while (0 < (it = nodes[++arg])) array[i++] = Rehydrate(linear, it += arg);
+                return array;
+            }
+            else
+            {
+                return 0 < (it = nodes[it]) || -it < nodes[0] ? new Symbol(it) : linear.Value[-it];
+            }
+        }
+        protected static object Evaluate(IEnvironment environment, Linear linear, int at)
+        {
+            var wired = linear.Wired;
+            var evaluate = wired[at];
+            if (evaluate != null)
+            {
+                return evaluate(environment, linear, at + 2);
+            }
+            var nodes = linear.Nodes;
+            var it = at;
+            if (0 < nodes[it++])
+            {
+                int arity;
+                if (0 < (arity = nodes[it]))
+                {
+                    var suffix = Math.Min(arity, 2);
+                    var value = linear.Value;
+                    int arg = it, exp = ++it;
+                    var i = -1;
+                    while (++i < suffix && 0 < (it = nodes[++arg]))
+                    {
+                        if (nodes[it += arg] == 0 && (it = nodes[it + 1]) < -2 && -it < nodes[0])
+                        {
+                            wired[at] = evaluate = (Evaluation)value[-it]; break;
+                        }
+                    }
+                    return
+                        evaluate != null ?
+                        evaluate(environment, linear, exp) :
+                        Evaluate(environment, linear, exp + nodes[exp]) is Closure closure ? closure.Inline(environment, exp + 1, arity - 1) : Rehydrate(linear, at);
+                }
+                else
+                {
+                    return Environment.Empty;
+                }
+            }
+            else
+            {
+                return 0 < (it = nodes[it]) ? environment.Get(new Symbol(it)) : linear.Value[-it];
+            }
+        }
+        public object Rehydrate(Linear linear) => Rehydrate(linear, 1);
+        public Linear Linearize(IEnvironment environment, object expression)
+        {
+            List<int> LinearizeAtom(List<object> v, object a)
+            {
+                int found;
+                if (!(a is Symbol s))
+                {
+                    found = v.IndexOf(a);
+                    if (found < 0)
+                    {
+                        v.Add(a);
+                        found = v.Count - 1;
+                    }
+                    found = 0 < found ? -found : found;
+                }
+                else
+                {
+                    found = s.Id;
+                }
+                return new List<int> { 0, found };
+            }
+            List<int> LinearizeArray(List<object> v, object[] a, bool isLambda)
+            {
+                var length = a.Length;
+                var list = new List<int> { 0, length };
+                var data = new List<List<int>>();
+                var head = length + 1;
+                var size = head + 2;
+                int last = 0;
+                for (var i = 0; i < length; i++)
+                {
+                    var item = isLambda && i == 0 ? LinearizeAtom(v, ((object[])a[i]).Cast<Symbol>().ToArray()) : Linearize(v, a[i]);
+                    data.Add(item);
+                    size += item.Count;
+                }
+                for (var i = 0; i < length; i++) list.Add(0);
+                list.Add(-1);
+                for (var i = 0; i < length; i++) { list[i + 2] = head-- + last; last += data[i].Count; }
+                for (var i = 0; i < length; i++) list.AddRange(data[i]);
+                list[0] = size;
+                return list;
+            }
+            List<int> Linearize(List<object> v, object o) =>
+                o is object[] a ?
+                LinearizeArray(v, a, a.Length == 3 && Symbol.Lambda.Equals(a[1]))
+                :
+                LinearizeAtom(v, o);
+            var nodes = new List<int> { environment.Global.Builtins.Count };
+            var value = new List<object>(new object[3] { Symbol.Undefined, null, typeof(void) }.Concat(environment.Global.Builtins.Skip(3).ToArray()));
+            nodes.AddRange(Linearize(value, expression));
+            return new Linear(nodes.ToArray(), value.ToArray(), new Evaluation[nodes.Count]);
+        }
+        public object Evaluate(IEnvironment environment, Linear linear) => Evaluate(environment, linear, 1);
+    }
+    public class Evaluator : LinearEvaluator
+    {
+        protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 7);
+        protected static object Definition(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            at++;
+            var lets = at + nodes[at++];
+            var body = at + nodes[at];
+            var defs = nodes[++lets];
+            if (0 < defs)
+            {
+                Symbol symbol = default;
+                int i = -1, let;
+                at = lets;
+                while (0 < (let = nodes[++at]))
+                {
+                    let += at;
+                    if ((++i % 2) == 0)
+                    {
+                        symbol = new Symbol(nodes[let + 1]);
+                    }
+                    else
+                    {
+                        environment.Set(symbol, Evaluate(environment, linear, let));
+                    }
+                }
+            }
+            return Evaluate(environment, linear, body);
+        }
+        protected static object Abstraction(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var head = at + nodes[at++]; at++; var body = at + nodes[at]; var args = (Symbol[])linear.Value[-nodes[head + 1]];
+            return new Closure(environment, args, linear, body);
+        }
+        protected virtual object Token(object context, string input, ref int offset, out int length) { length = 0; return Symbol.EOF; }
+        protected virtual object Parse(object context, string input, object current, ref int offset, int matched)
+        {
+            if (Symbol.EOF.Equals(current) || Symbol.Undefined.Equals(current)) throw new Exception($"Unexpected {(Symbol.Undefined.Equals(current) ? $"'{input[offset]}'" : "EOF")} at {offset}");
+            else if (Symbol.Quote.Equals(current)) { offset += matched; current = Quoted(Symbol.Quote, Parse(context, input, Token(context, input, ref offset, out matched), ref offset, matched)); }
+            else if (Symbol.Open.Equals(current))
+            {
+                var list = new List<object>(); offset += matched; while (!Symbol.EOF.Equals(current = Token(context, input, ref offset, out matched)) && !Symbol.Undefined.Equals(current) && !Symbol.Close.Equals(current)) list.Add(Parse(context, input, current, ref offset, matched));
+                if (!Symbol.EOF.Equals(current) && !Symbol.Undefined.Equals(current)) offset += matched; else throw new Exception($"Unexpected {(Symbol.Undefined.Equals(current) ? $"'{input[offset]}'" : "EOF")} at {offset}"); current = list.ToArray();
+            }
+            else offset += matched;
+            return current;
+        }
+        protected virtual Global AsGlobal(IEnvironment environment) => (Global)environment.Set(Symbol.Quote, (Evaluation)Quotation).Set(Symbol.Let, (Evaluation)Definition).Set(Symbol.Lambda, (Evaluation)Abstraction);
+        public object Quoted(Symbol quote, object expression) => new object[2] { quote, expression };
+        public bool IsQuoted(object expression, out Symbol quote) => (expression is object[] list && list.Length == 2 && Symbol.Quote.Equals(quote = list[0] is Symbol symbol ? symbol : Symbol.Undefined)) || Symbol.Quote.Equals(quote = Symbol.Undefined);
+        public object Evaluate(IEnvironment environment, object expression) => base.Evaluate(environment, Linearize(environment, expression));
+        public object Evaluate(IEnvironment environment, string input) => Evaluate(environment, input, out _);
+        public object Evaluate(IEnvironment environment, string input, out Global global) => Evaluate(environment, input, out global, out _);
+        public object Evaluate(IEnvironment environment, string input, out Global global, out object parsed) => Evaluate(global = AsGlobal(environment ?? new Global(GetSymbolProvider(null))), parsed = Parse(global, input));
+        public virtual SymbolProvider GetSymbolProvider(object context) => (context as SymbolProvider) ?? (context as Global)?.SymbolProvider;
+        public virtual object Parse(object context, string input) { var offset = 0; var expression = Parse(context, input, Token(context, input, ref offset, out var matched), ref offset, matched); return Symbol.EOF.Equals(Token(context, input, ref offset, out _)) ? expression : throw new Exception($"Unexpected '{input[offset]}' at {offset}"); }
+        public virtual string Print(object context, object expression) { var symbols = GetSymbolProvider(context); var sequence = Environment.Sequence(expression); var nonEmpty = sequence != null && sequence.Any(); return sequence != null ? (!IsQuoted(expression, out var quotedWith) ? $"( {string.Join('\x20', sequence.Select(value => Print(context, value)))}{(nonEmpty ? " )" : ")")}" : $"{symbols.NameOf(quotedWith)}{Print(context, ((object[])expression)[1])}") : expression is Symbol ? symbols.NameOf((Symbol)expression) : Print(context, symbols.Get($"[:{expression?.GetType() ?? typeof(void)}]")); }
+    }
+}
+
+class Program
+{
+    // A linear evaluator which knows whitespace, signed 64bit integers, and the core lambda calculus (let and lambda forms only),
+    // but no bindings of programmer-defined identifiers yet
+    public class DerivedEvaluator : Evaluator
+    {
+        private SymbolProvider symbolProvider;
+        protected static readonly Regex WhiteSpace = new Regex("\\s+", RegexOptions.Compiled);
+        protected static readonly Regex Integer = new Regex("\\-?(0|[1-9]+[0-9]*)", RegexOptions.Compiled);
+
+        protected override object Token(object context, string input, ref int offset, out int length)
+        {
+            var symbols = GetSymbolProvider(context);
+            Match match;
+            length = 0;
+            while ((match = WhiteSpace.Match(input, offset)).Success && match.Index == offset) offset += match.Length;
+            if (offset < input.Length)
+            {
+                Symbol builtin;
+                if (char.IsDigit(input[offset]) || (input[offset] == '-' && offset < input.Length - 1 && char.IsDigit(input[offset + 1])))
+                {
+                    match = Integer.Match(input, offset);
+                    length = match.Length;
+                    return long.Parse(match.Value);
+                }
+                if ((builtin = symbols.Builtin(input, offset)).Id < 0)
+                {
+                    length = symbols.NameOf(builtin).Length;
+                    return builtin;
+                }
+                return Symbol.Undefined;
+            }
+            return Symbol.EOF;
+        }
+
+        public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context) ?? symbolProvider ?? (symbolProvider = new SymbolProvider());
+
+        public override string Print(object context, object expression) => expression is int n ? $"{n}" : base.Print(context, expression);
+    }
+
+    // A linear evaluator which knows: whitespace, signed 64bit integers, the five operations (+, -, *, /, and %),
+    // the core lambda calculus (let and lambda forms only), the ternary if-then-else conditional operator - ie: ( condition ? ifTrue : ifFalse ) -
+    // and lexically-scoped bindings of programmer-defined identifiers, as well as lexically-scoped variable assignments
+    // (eg, for impure, side effectful functions);
+    // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
+    public class ShootoutEvaluator : DerivedEvaluator
+    {
+        private Symbol plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for;
+        protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
+        protected static readonly Regex Identifier = new Regex("[A-Za-z_][A-Za-z_0-9]*", RegexOptions.Compiled);
+
+        protected static object Addition(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            return (long)Evaluate(environment, linear, left) + (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object Subtraction(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            return (long)Evaluate(environment, linear, left) - (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object Multiplication(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            return (long)Evaluate(environment, linear, left) * (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object Division(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            return (long)Evaluate(environment, linear, left) / (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object Modulus(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            return (long)Evaluate(environment, linear, left) % (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object IsLessThan(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            return (long)Evaluate(environment, linear, left) < (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object IfThenElse(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var test = at + nodes[at++];
+            at++;
+            var then = at + nodes[at++];
+            at++;
+            var @else = at + nodes[at];
+            return (bool)Evaluate(environment, linear, test) ? Evaluate(environment, linear, then) : Evaluate(environment, linear, @else);
+        }
+
+        protected static object Assign(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            var symbol = new Symbol(nodes[left + 1]);
+            var result = Evaluate(environment, linear, right);
+            environment.Set(symbol, result, true);
+            return result;
+        }
+
+        protected static object ForLoop(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            at++;
+            var bound = at + nodes[at++];
+            at++;
+            var start = at + nodes[at++];
+            at++;
+            var count = at + nodes[at++];
+            var body = at + nodes[at];
+            var loop = new Closure(environment, new Symbol[1] { new Symbol(nodes[bound + 1]) }, linear, body);
+            var from = (long)Evaluate(environment, linear, start);
+            var take = (long)Evaluate(environment, linear, count);
+            object last = Symbol.Undefined;
+            take += from;
+            for (var i = from; i < take; i++) last = loop.Invoke1(i);
+            return last;
+        }
+
+        protected override object Token(object context, string input, ref int offset, out int length)
+        {
+            var symbols = GetSymbolProvider(context);
+            Match match;
+            length = 0;
+            while ((match = WhiteSpace.Match(input, offset)).Success && match.Index == offset) offset += match.Length;
+            if (offset < input.Length)
+            {
+                Symbol builtin;
+                if (char.IsDigit(input[offset]) || (input[offset] == '-' && offset < input.Length - 1 && char.IsDigit(input[offset + 1])))
+                {
+                    match = Integer.Match(input, offset);
+                    length = match.Length;
+                    return long.Parse(match.Value);
+                }
+                if ((match = Literal.Match(input, offset)).Success && match.Index == offset)
+                {
+                    length = match.Value.Length;
+                    return match.Value.Substring(1, match.Value.Length - 2).Replace("\\\"", "\"");
+                }
+                if (char.IsLetter(input[offset]) || input[offset] == '_')
+                {
+                    match = Identifier.Match(input, offset);
+                    length = match.Length;
+                    return match.Value != "null" ? symbols.Get(match.Value) : null;
+                }
+                if ((builtin = symbols.Builtin(input, offset)).Id < 0)
+                {
+                    length = symbols.NameOf(builtin).Length;
+                    return builtin;
+                }
+                return Symbol.Undefined;
+            }
+            return Symbol.EOF;
+        }
+
+        protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(Times) ? (Global)environment
+            .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus)
+            .Set(LessThan, (Evaluation)IsLessThan).Set(Query, (Evaluation)IfThenElse)
+            .Set(Equal, (Evaluation)Assign).Set(For, (Evaluation)ForLoop)
+            :
+            (Global)environment;
+
+        public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context)
+            .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent)
+            .Builtin("<", out lessThan).Builtin("?", out query).Builtin(":", out colon)
+            .Builtin("=", out equal).Builtin("for", out @for);
+
+        public override string Print(object context, object expression) => expression is string s ? $"\"{s.Replace("\"", "\\\"")}\"" : expression != null ? base.Print(context, expression) : "null";
+
+        public Symbol Plus => plus;
+
+        public Symbol Minus => minus;
+
+        public Symbol Times => times;
+
+        public Symbol DivideBy => divideBy;
+
+        public Symbol Percent => percent;
+
+        public Symbol LessThan => lessThan;
+
+        public Symbol Query => query;
+
+        public Symbol Colon => colon;
+
+        public Symbol Equal => equal;
+
+        public Symbol For => @for;
+    }
+
+    static long CompiledFactorial(long n) => 0 < n ? n * CompiledFactorial(n - 1) : 1;
+
+    static long CompiledFib(long n) =>
+        n < 2 ? n : CompiledFib(n - 1) + CompiledFib(n - 2);
+
+    static void Main(string[] args)
+    {
+        const int N = 500_000;
+
+        var evaluator = new ShootoutEvaluator();
+
+        System.Console.WriteLine("About to stress the for loop vs lexical scope 10,000,000 times...");
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to start...");
+        System.Console.ReadKey();
+
+        // Cf. https://news.ycombinator.com/item?id=31427506
+        // (Python 3.10 vs JavaScript thread)
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var acc = (long)evaluator.Evaluate(null, @"(
+    let
+    (
+        f ( ( x ) => ( 10 * x ) )
+
+        acc 0
+    )
+
+    ( for i = 0 : 10000000
+        ( acc = ( acc + ( f i ) ) )
+    )
+)");
+        sw.Stop();
+        var ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"acc: {acc:0,0} ... in {ms:0,0} ms");
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        var result = evaluator.Evaluate(null, @"(
+    let
+    (
+        Fib ( ( n ) => ( ( n < 2 ) ? n : ( ( Fib ( n - 1 ) ) + ( Fib ( n - 2 ) ) ) ) )
+    )
+
+    Fib
+)  ", out var global, out var parsed);
+        var closure = (Closure)result;
+
+        System.Console.WriteLine("( For history, see also: http://dada.perl.it/shootout/fibo.html )");
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to start...");
+        System.Console.ReadKey();
+
+        sw = System.Diagnostics.Stopwatch.StartNew();
+        var fib32 = CompiledFib(32);
+        sw.Stop();
+        ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"CompiledFib(32): {fib32:0,0} ... in {ms:0,0} ms");
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        sw = System.Diagnostics.Stopwatch.StartNew();
+        var fib32bis = (long)closure.Invoke(32L);
+        sw.Stop();
+        ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"{nameof(ShootoutEvaluator)}'s Fib(32): {fib32bis:0,0} ... in {ms:0,0} ms");
+
+        System.Diagnostics.Debug.Assert(fib32 == fib32bis);
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        closure = (Closure)evaluator.Evaluate(global, @"(
+    let
+    (
+        Fact ( ( n ) => ( ( 1 < n ) ? ( n * ( Fact ( n - 1 ) ) ) : 1 ) )
+    )
+
+    Fact
+)");
+
+        var sw1 = System.Diagnostics.Stopwatch.StartNew();
+        long fact20 = 0;
+        for (var i = 0; i < N; i++)
+        {
+            fact20 = CompiledFactorial(20);
+        }
+        sw1.Stop();
+        var elapsed = sw1.ElapsedMilliseconds;
+        System.Console.WriteLine($"{nameof(CompiledFactorial)}'s 20! = {fact20:0,0} x {N:0,0} times ... in {elapsed:0,0} ms");
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        var sw2 = System.Diagnostics.Stopwatch.StartNew();
+        long fact20bis = 0;
+        for (var i = 0; i < N; i++)
+        {
+            fact20bis = (long)closure.Invoke(20L);
+        }
+        sw2.Stop();
+        elapsed = sw2.ElapsedMilliseconds;
+        System.Console.WriteLine($"{nameof(ShootoutEvaluator)}'s 20! = {fact20bis:0,0} x {N:0,0} times ... in {elapsed:0,0} ms");
+
+        System.Diagnostics.Debug.Assert(fact20 == fact20bis);
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key... to exit!");
+        System.Console.ReadKey(true);
+    }
+}

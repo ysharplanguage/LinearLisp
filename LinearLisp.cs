@@ -209,7 +209,7 @@ namespace System.Symbolics
             var evaluate = wired[at];
             if (evaluate != null)
             {
-                return evaluate(environment, linear, at + 2);
+                return evaluate(environment, linear, at + 1);
             }
             var nodes = linear.Nodes;
             var it = at;
@@ -231,7 +231,7 @@ namespace System.Symbolics
                     }
                     return
                         evaluate != null ?
-                        evaluate(environment, linear, exp) :
+                        evaluate(environment, linear, at + 1) :
                         Evaluate(environment, linear, exp + nodes[exp]) is Closure closure ? closure.Inline(environment, exp + 1, arity - 1) : Rehydrate(linear, at);
                 }
                 else
@@ -301,11 +301,11 @@ namespace System.Symbolics
     }
     public class Evaluator : LinearEvaluator
     {
-        protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 7);
+        protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 6);
         protected static object Definition(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var lets = at + nodes[at++];
             var body = at + nodes[at];
             var defs = nodes[++lets];
@@ -332,6 +332,7 @@ namespace System.Symbolics
         protected static object Abstraction(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var head = at + nodes[at++]; at++; var body = at + nodes[at]; var args = (Symbol[])linear.Value[-nodes[head + 1]];
             return new Closure(environment, args, linear, body);
         }
@@ -408,13 +409,37 @@ class Program
     // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
     public class ShootoutEvaluator : DerivedEvaluator
     {
-        private Symbol plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for;
+        private Symbol brackets, atSign, plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for;
         protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
         protected static readonly Regex Identifier = new Regex("[A-Za-z_][A-Za-z_0-9]*", RegexOptions.Compiled);
+
+        protected static object NewArray(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var length = nodes[at++] - 1;
+            var i = 0;
+            int it;
+            var array = new object[length];
+            while (0 < (it = nodes[++at])) array[i++] = Evaluate(environment, linear, it += at);
+            return array;
+        }
+
+        protected static object Access(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            at++;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            var array = (System.Array)Evaluate(environment, linear, left);
+            var index = System.Convert.ToInt32(Evaluate(environment, linear, right));
+            return array.GetValue(index);
+        }
 
         protected static object Addition(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -424,6 +449,7 @@ class Program
         protected static object Subtraction(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -433,6 +459,7 @@ class Program
         protected static object Multiplication(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -442,6 +469,7 @@ class Program
         protected static object Division(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -451,6 +479,7 @@ class Program
         protected static object Modulus(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -460,6 +489,7 @@ class Program
         protected static object IsLessThan(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -469,6 +499,7 @@ class Program
         protected static object IfThenElse(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var test = at + nodes[at++];
             at++;
             var then = at + nodes[at++];
@@ -480,6 +511,7 @@ class Program
         protected static object Assign(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            at++;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -492,7 +524,7 @@ class Program
         protected static object ForLoop(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var bound = at + nodes[at++];
             at++;
             var start = at + nodes[at++];
@@ -545,6 +577,7 @@ class Program
         }
 
         protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(Times) ? (Global)environment
+            .Set(Brackets, (Evaluation)NewArray).Set(AtSign, (Evaluation)Access)
             .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus)
             .Set(LessThan, (Evaluation)IsLessThan).Set(Query, (Evaluation)IfThenElse)
             .Set(Equal, (Evaluation)Assign).Set(For, (Evaluation)ForLoop)
@@ -552,11 +585,16 @@ class Program
             (Global)environment;
 
         public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context)
+            .Builtin("[]", out brackets).Builtin("@", out atSign)
             .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent)
             .Builtin("<", out lessThan).Builtin("?", out query).Builtin(":", out colon)
             .Builtin("=", out equal).Builtin("for", out @for);
 
         public override string Print(object context, object expression) => expression is string s ? $"\"{s.Replace("\"", "\\\"")}\"" : expression != null ? base.Print(context, expression) : "null";
+
+        public Symbol Brackets => brackets;
+
+        public Symbol AtSign => atSign;
 
         public Symbol Plus => plus;
 
@@ -590,14 +628,14 @@ class Program
 
         var evaluator = new ShootoutEvaluator();
 
-        System.Console.WriteLine("About to stress the for loop vs lexical scope 10,000,000 times...");
-        System.Console.WriteLine();
-        System.Console.WriteLine("Press a key to start...");
-        System.Console.ReadKey();
-
         // Cf. https://news.ycombinator.com/item?id=31427506
         // (Python 3.10 vs JavaScript thread)
+        System.Console.WriteLine("About to stress the for loop vs lexical scope 10,000,000 times...");
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        long ms;
         var acc = (long)evaluator.Evaluate(null, @"(
     let
     (
@@ -611,8 +649,10 @@ class Program
     )
 )");
         sw.Stop();
-        var ms = sw.ElapsedMilliseconds;
+        ms = sw.ElapsedMilliseconds;
         System.Console.WriteLine($"acc: {acc:0,0} ... in {ms:0,0} ms");
+
+        System.Diagnostics.Debug.Assert(acc == 499_999_950_000_000);
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");

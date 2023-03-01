@@ -13,7 +13,11 @@ namespace System.Symbolics
         IEnvironment Parent { get; }
         Global Global { get; }
     }
-    public sealed class Formal1 : IEnvironment
+    public interface IFormal : IEnvironment
+    {
+        IEnvironment Set(int index, object value);
+    }
+    public sealed class Formal1 : IFormal
     {
         private Symbol symbol; private object value;
         public Formal1(Symbol[] parameters, IEnvironment parent) { symbol = parameters[0]; Parent = parent; }
@@ -21,11 +25,11 @@ namespace System.Symbolics
         public object Get(Symbol symbol) => 0 < symbol.Id && symbol.Equals(this.symbol) ? value : Parent.Get(symbol);
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id && symbol.Equals(this.symbol)) { this.value = value; return this; } Parent.Set(symbol, value, outerLookup); return this; }
-        public void Set(int index, object value) => this.value = value;
+        public IEnvironment Set(int index, object value) { this.value = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
     }
-    public sealed class Formal2 : IEnvironment
+    public sealed class Formal2 : IFormal
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[2];
         public Formal2(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
@@ -33,11 +37,11 @@ namespace System.Symbolics
         public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 2) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 2; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
-        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
     }
-    public sealed class Formal3 : IEnvironment
+    public sealed class Formal3 : IFormal
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[3];
         public Formal3(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
@@ -45,11 +49,11 @@ namespace System.Symbolics
         public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 3) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 3; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
-        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
     }
-    public sealed class Formal4 : IEnvironment
+    public sealed class Formal4 : IFormal
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[4];
         public Formal4(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
@@ -57,11 +61,11 @@ namespace System.Symbolics
         public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 4) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 4; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
-        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
     }
-    public sealed class Formal5 : IEnvironment
+    public sealed class Formal5 : IFormal
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[5];
         public Formal5(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
@@ -69,7 +73,7 @@ namespace System.Symbolics
         public object Get(Symbol symbol) { if (0 < symbol.Id) { var i = -1; while (++i < 5) if (symbol.Equals(symbols[i])) return values[i]; } return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value, bool outerLookup = false) { if (0 < symbol.Id) { var i = 5; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } } Parent.Set(symbol, value, outerLookup); return this; }
-        public void Set(int index, object value) => values[index] = value;
+        public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
     }
@@ -224,9 +228,9 @@ namespace System.Symbolics
                     var i = -1;
                     while (++i < suffix && 0 < (it = nodes[++arg]))
                     {
-                        if (nodes[it += arg] == 0 && (it = nodes[it + 1]) < -2 && -it < nodes[0])
+                        if (nodes[it += arg] == 0 && (it = nodes[it + 1]) < -2 && (it = -it) < nodes[0] && value[it] != null)
                         {
-                            wired[at] = evaluate = (Evaluation)value[-it]; break;
+                            wired[at] = evaluate = (Evaluation)value[it]; break;
                         }
                     }
                     return
@@ -409,18 +413,28 @@ class Program
     // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
     public class ShootoutEvaluator : DerivedEvaluator
     {
-        private Symbol brackets, atSign, plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for;
+        private Symbol brackets, atSign, comma, plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for, @while;
         protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
         protected static readonly Regex Identifier = new Regex("[A-Za-z_][A-Za-z_0-9]*", RegexOptions.Compiled);
 
         protected static object NewArray(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            var length = nodes[at++] - 1;
-            var i = 0;
-            int it;
-            var array = new object[length];
-            while (0 < (it = nodes[++at])) array[i++] = Evaluate(environment, linear, it += at);
+            int token = nodes[at++];
+            var length = token - 1;
+            object[] array;
+            if (token == 3 && nodes[token = (token = at + 1) + nodes[token]] == 0 && (token = nodes[token + 1]) < -2 && -token < nodes[0])
+            {
+                at += 2;
+                array = new object[System.Convert.ToInt32(Evaluate(environment, linear, at + nodes[at]))];
+            }
+            else
+            {
+                var i = 0;
+                int it;
+                array = new object[length];
+                while (0 < (it = nodes[++at])) array[i++] = Evaluate(environment, linear, it += at);
+            }
             return array;
         }
 
@@ -434,6 +448,15 @@ class Program
             var array = (System.Array)Evaluate(environment, linear, left);
             var index = System.Convert.ToInt32(Evaluate(environment, linear, right));
             return array.GetValue(index);
+        }
+
+        protected static object Enumeration(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            object last;
+            at++;
+            while (true) { last = Evaluate(environment, linear, at + nodes[at]); if (0 < nodes[at + 1]) at += 2; else break; }
+            return last;
         }
 
         protected static object Addition(IEnvironment environment, Linear linear, int at)
@@ -513,11 +536,23 @@ class Program
             var nodes = linear.Nodes;
             at++;
             var left = at + nodes[at++];
-            at++;
+            var oper = at + nodes[at++];
             var right = at + nodes[at];
-            var symbol = new Symbol(nodes[left + 1]);
             var result = Evaluate(environment, linear, right);
-            environment.Set(symbol, result, true);
+            if (left < oper - 2)
+            {
+                at += 4;
+                var symbol = new Symbol(nodes[at + nodes[at++] + 1]);
+                at++;
+                var index = System.Convert.ToInt32(Evaluate(environment, linear, at + nodes[at]));
+                var array = (System.Array)environment.Get(symbol);
+                array.SetValue(result, index);
+            }
+            else
+            {
+                var symbol = new Symbol(nodes[left + 1]);
+                environment.Set(symbol, result, true);
+            }
             return result;
         }
 
@@ -530,13 +565,25 @@ class Program
             var start = at + nodes[at++];
             at++;
             var count = at + nodes[at++];
+            at++;
             var body = at + nodes[at];
-            var loop = new Closure(environment, new Symbol[1] { new Symbol(nodes[bound + 1]) }, linear, body);
+            var iter = new Formal1(new Symbol[1] { new Symbol(nodes[bound + 1]) }, environment);
             var from = (long)Evaluate(environment, linear, start);
             var take = (long)Evaluate(environment, linear, count);
             object last = Symbol.Undefined;
             take += from;
-            for (var i = from; i < take; i++) last = loop.Invoke1(i);
+            for (var i = from; i < take; i++) last = Evaluate(iter.Set(0, i), linear, body);
+            return last;
+        }
+
+        protected static object WhileLoop(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            at += 2;
+            var test = at + nodes[at++];
+            var body = at + nodes[at];
+            object last = Symbol.Undefined;
+            while ((bool)Evaluate(environment, linear, test)) last = Evaluate(environment, linear, body);
             return last;
         }
 
@@ -577,24 +624,26 @@ class Program
         }
 
         protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(Times) ? (Global)environment
-            .Set(Brackets, (Evaluation)NewArray).Set(AtSign, (Evaluation)Access)
+            .Set(Brackets, (Evaluation)NewArray).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Enumeration)
             .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus)
             .Set(LessThan, (Evaluation)IsLessThan).Set(Query, (Evaluation)IfThenElse)
-            .Set(Equal, (Evaluation)Assign).Set(For, (Evaluation)ForLoop)
+            .Set(Equal, (Evaluation)Assign).Set(For, (Evaluation)ForLoop).Set(While, (Evaluation)WhileLoop)
             :
             (Global)environment;
 
         public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context)
-            .Builtin("[]", out brackets).Builtin("@", out atSign)
+            .Builtin("[]", out brackets).Builtin("@", out atSign).Builtin(",", out comma)
             .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent)
             .Builtin("<", out lessThan).Builtin("?", out query).Builtin(":", out colon)
-            .Builtin("=", out equal).Builtin("for", out @for);
+            .Builtin("=", out equal).Builtin("for", out @for).Builtin("while", out @while);
 
         public override string Print(object context, object expression) => expression is string s ? $"\"{s.Replace("\"", "\\\"")}\"" : expression != null ? base.Print(context, expression) : "null";
 
         public Symbol Brackets => brackets;
 
         public Symbol AtSign => atSign;
+
+        public Symbol Comma => comma;
 
         public Symbol Plus => plus;
 
@@ -615,6 +664,8 @@ class Program
         public Symbol Equal => equal;
 
         public Symbol For => @for;
+
+        public Symbol While => @while;
     }
 
     static long CompiledFactorial(long n) => 0 < n ? n * CompiledFactorial(n - 1) : 1;
@@ -627,6 +678,11 @@ class Program
         const int N = 500_000;
 
         var evaluator = new ShootoutEvaluator();
+
+        System.Console.WriteLine("( For history, see also: http://dada.perl.it/shootout/fibo.html )");
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to start...");
+        System.Console.ReadKey();
 
         // Cf. https://news.ycombinator.com/item?id=31427506
         // (Python 3.10 vs JavaScript thread)
@@ -644,13 +700,13 @@ class Program
         acc 0
     )
 
-    ( for i = 0 : 10000000
+    ( for i = 0, 10000000 :
         ( acc = ( acc + ( f i ) ) )
     )
 )");
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"acc: {acc:0,0} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"acc = {acc:0,0} ... in {ms:0,0} ms");
 
         System.Diagnostics.Debug.Assert(acc == 499_999_950_000_000);
 
@@ -668,16 +724,11 @@ class Program
 )  ", out var global, out var parsed);
         var closure = (Closure)result;
 
-        System.Console.WriteLine("( For history, see also: http://dada.perl.it/shootout/fibo.html )");
-        System.Console.WriteLine();
-        System.Console.WriteLine("Press a key to start...");
-        System.Console.ReadKey();
-
         sw = System.Diagnostics.Stopwatch.StartNew();
         var fib32 = CompiledFib(32);
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"CompiledFib(32): {fib32:0,0} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"{nameof(CompiledFib)}(32): {fib32} ... in {ms:0,0} ms");
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
@@ -687,7 +738,7 @@ class Program
         var fib32bis = (long)closure.Invoke(32L);
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(ShootoutEvaluator)}'s Fib(32): {fib32bis:0,0} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"{nameof(ShootoutEvaluator)} Fib(32): {fib32bis} ... in {ms:0,0} ms");
 
         System.Diagnostics.Debug.Assert(fib32 == fib32bis);
 
@@ -712,7 +763,7 @@ class Program
         }
         sw1.Stop();
         var elapsed = sw1.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(CompiledFactorial)}'s 20! = {fact20:0,0} x {N:0,0} times ... in {elapsed:0,0} ms");
+        System.Console.WriteLine($"{nameof(CompiledFactorial)} 20! = {fact20} x {N:0,0} times ... in {elapsed:0,0} ms");
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
@@ -726,7 +777,7 @@ class Program
         }
         sw2.Stop();
         elapsed = sw2.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(ShootoutEvaluator)}'s 20! = {fact20bis:0,0} x {N:0,0} times ... in {elapsed:0,0} ms");
+        System.Console.WriteLine($"{nameof(ShootoutEvaluator)} 20! = {fact20bis} x {N:0,0} times ... in {elapsed:0,0} ms");
 
         System.Diagnostics.Debug.Assert(fact20 == fact20bis);
 

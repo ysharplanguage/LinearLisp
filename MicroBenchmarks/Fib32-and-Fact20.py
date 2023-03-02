@@ -21,12 +21,12 @@ elapsed = elapsed_time(t0)
 print("Fib(32) = " + str(fib32) + " in " + str(elapsed) + " ms")
 
 print()
-print("Python... About to compute 20! x 500,000 times...")
+print("Python... About to compute 20! x 1,000,000 times...")
 print()
 
 t0 = started_time()
-for i in range(0, 500000):
+for i in range(0, 1000000):
 	fact20 = Fact(20)
 elapsed = elapsed_time(t0)
-print("20! = " + str(fact20) + " in " + str(elapsed) + " ms")
+print("20! = " + str(fact20) + " x 1,000,000 times in " + str(elapsed) + " ms")
 print()

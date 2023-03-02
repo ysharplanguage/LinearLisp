@@ -4,7 +4,7 @@ using System.Symbolics;
 using System.Text.RegularExpressions;
 namespace System.Symbolics
 {
-    public sealed class Linear { public readonly int[] Nodes; public readonly object[] Value; public readonly Evaluation[] Wired; public Linear(int[] nodes, object[] value, Evaluation[] wired) { Nodes = nodes; Value = value; Wired = wired; } }
+    public sealed class Linear { public readonly int[] Nodes; public readonly object[] Value; public readonly Evaluation[] Wired; public readonly int[] Trace; public Linear(int[] nodes, object[] value, Evaluation[] wired) { Nodes = nodes; Value = value; Wired = wired; Trace = new int[nodes.Length]; } }
     public interface IEnvironment
     {
         object Get(Symbol symbol);
@@ -213,7 +213,7 @@ namespace System.Symbolics
             var evaluate = wired[at];
             if (evaluate != null)
             {
-                return evaluate(environment, linear, at + 1);
+                return evaluate(environment, linear, at);
             }
             var nodes = linear.Nodes;
             var it = at;
@@ -235,7 +235,7 @@ namespace System.Symbolics
                     }
                     return
                         evaluate != null ?
-                        evaluate(environment, linear, at + 1) :
+                        evaluate(environment, linear, at) :
                         Evaluate(environment, linear, exp + nodes[exp]) is Closure closure ? closure.Inline(environment, exp + 1, arity - 1) : Rehydrate(linear, at);
                 }
                 else
@@ -305,11 +305,11 @@ namespace System.Symbolics
     }
     public class Evaluator : LinearEvaluator
     {
-        protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 6);
+        protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 7);
         protected static object Definition(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at += 2;
+            at += 3;
             var lets = at + nodes[at++];
             var body = at + nodes[at];
             var defs = nodes[++lets];
@@ -336,7 +336,7 @@ namespace System.Symbolics
         protected static object Abstraction(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var head = at + nodes[at++]; at++; var body = at + nodes[at]; var args = (Symbol[])linear.Value[-nodes[head + 1]];
             return new Closure(environment, args, linear, body);
         }
@@ -420,7 +420,7 @@ class Program
         protected static object NewArray(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            int token = nodes[at++];
+            int token = nodes[at += 2];
             var length = token - 1;
             object[] array;
             if (token == 3 && nodes[token = (token = at + 1) + nodes[token]] == 0 && (token = nodes[token + 1]) < -2 && -token < nodes[0])
@@ -441,7 +441,7 @@ class Program
         protected static object Access(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
@@ -454,87 +454,147 @@ class Program
         {
             var nodes = linear.Nodes;
             object last;
-            at++;
+            at += 2;
             while (true) { last = Evaluate(environment, linear, at + nodes[at]); if (0 < nodes[at + 1]) at += 2; else break; }
             return last;
         }
 
         protected static object Addition(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[at++]) + (long)Evaluate(environment, linear, trace[at]);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
             return (long)Evaluate(environment, linear, left) + (long)Evaluate(environment, linear, right);
         }
 
         protected static object Subtraction(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[at++]) - (long)Evaluate(environment, linear, trace[at]);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
             return (long)Evaluate(environment, linear, left) - (long)Evaluate(environment, linear, right);
         }
 
         protected static object Multiplication(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[at++]) * (long)Evaluate(environment, linear, trace[at]);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
             return (long)Evaluate(environment, linear, left) * (long)Evaluate(environment, linear, right);
         }
 
         protected static object Division(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[at++]) / (long)Evaluate(environment, linear, trace[at]);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
             return (long)Evaluate(environment, linear, left) / (long)Evaluate(environment, linear, right);
         }
 
         protected static object Modulus(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[at++]) % (long)Evaluate(environment, linear, trace[at]);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
             return (long)Evaluate(environment, linear, left) % (long)Evaluate(environment, linear, right);
         }
 
         protected static object IsLessThan(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[at++]) < (long)Evaluate(environment, linear, trace[at]);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             at++;
             var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
             return (long)Evaluate(environment, linear, left) < (long)Evaluate(environment, linear, right);
         }
 
         protected static object IfThenElse(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                var ttest = trace[t++];
+                var tthen = trace[t++];
+                var telse = trace[t];
+                return (bool)Evaluate(environment, linear, ttest) ? Evaluate(environment, linear, tthen) : Evaluate(environment, linear, telse);
+            }
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var test = at + nodes[at++];
             at++;
             var then = at + nodes[at++];
             at++;
             var @else = at + nodes[at];
+            trace[t++] = test;
+            trace[t++] = then;
+            trace[t] = @else;
             return (bool)Evaluate(environment, linear, test) ? Evaluate(environment, linear, then) : Evaluate(environment, linear, @else);
         }
 
         protected static object Assign(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at++;
+            at += 2;
             var left = at + nodes[at++];
             var oper = at + nodes[at++];
             var right = at + nodes[at];
@@ -559,7 +619,7 @@ class Program
         protected static object ForLoop(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at += 2;
+            at += 3;
             var bound = at + nodes[at++];
             at++;
             var start = at + nodes[at++];
@@ -579,7 +639,7 @@ class Program
         protected static object WhileLoop(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at += 2;
+            at += 3;
             var test = at + nodes[at++];
             var body = at + nodes[at];
             object last = Symbol.Undefined;
@@ -706,7 +766,7 @@ class Program
 )");
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"acc = {acc:0,0} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"acc = {acc} ... in {ms:0,0} ms");
 
         System.Diagnostics.Debug.Assert(acc == 499_999_950_000_000);
 

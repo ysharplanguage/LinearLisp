@@ -18,7 +18,7 @@ print()
 t0 = started_time()
 fib32 = Fib(32)
 elapsed = elapsed_time(t0)
-print("Fib(32) = " + str(Fib(32)) + " in " + str(elapsed) + " ms")
+print("Fib(32) = " + str(fib32) + " in " + str(elapsed) + " ms")
 
 print()
 print("Python... About to compute 20! x 500,000 times...")

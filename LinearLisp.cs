@@ -735,7 +735,7 @@ class Program
 
     static void Main(string[] args)
     {
-        const int N = 500_000;
+        const int N = 1_000_000;
 
         var evaluator = new ShootoutEvaluator();
 

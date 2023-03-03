@@ -14,7 +14,9 @@ def Fact(n):
     return 1
 
 print("Python... About to compute Fib(32) (only once)...")
-print()
+print("(Press return)")
+input()
+
 t0 = started_time()
 fib32 = Fib(32)
 elapsed = elapsed_time(t0)
@@ -22,7 +24,8 @@ print("Fib(32) = " + str(fib32) + " in " + str(elapsed) + " ms")
 
 print()
 print("Python... About to compute 20! x 1,000,000 times...")
-print()
+print("(Press return)")
+input()
 
 t0 = started_time()
 for i in range(0, 1000000):

@@ -9,7 +9,8 @@ function Fact(n) {
 var fact20, fib32, t0, elapsed;
 
 WScript.StdOut.WriteLine("MS JScript... About to compute Fib(32) (only once)...");
-WScript.StdOut.WriteLine();
+WScript.StdOut.WriteLine("(Press return)");
+WScript.StdIn.ReadLine();
 
 t0 = new Date().valueOf();
 fib32 = Fib(32);
@@ -19,7 +20,8 @@ WScript.StdOut.WriteLine("Fib(32) = " + fib32.toString() + " in " + elapsed.toSt
 WScript.StdOut.WriteLine();
 
 WScript.StdOut.WriteLine("MS JScript... About to compute 20! x 1,000,000 times...");
-WScript.StdOut.WriteLine();
+WScript.StdOut.WriteLine("(Press return)");
+WScript.StdIn.ReadLine();
 
 t0 = new Date().valueOf();
 for (var i = 0; i < 1000000; i++)

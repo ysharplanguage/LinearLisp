@@ -1,17 +1,20 @@
-function f([int]$x) {
-  (10 * $x)
-}
-
-Write-Host "PowerShell... About to stress the for loop vs lexical scope 1,000,000 times..."
-Write-Host ""
+$N = 10000
 
 $acc = 0
 
+function f([int]$x) {
+  $acc + (10 * $x)
+}
+
+Write-Host "PowerShell... About to stress the for loop vs lexical scope $N times..."
+Write-Host "(Press return)"
+[System.Console]::ReadLine()
+
 $sw = [System.Diagnostics.StopWatch]::StartNew()
 
-for ($i = 0; $i -lt 1000000; $i++)
+for ($i = 0; $i -lt $N; $i++)
 {
-  $acc = ($acc + (f $i))
+  $acc = (f $i)
 }
 
 $sw.Stop()

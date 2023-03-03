@@ -441,6 +441,14 @@ class Program
 
         protected static object Access(IEnvironment environment, Linear linear, int at)
         {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                var tarray = (System.Array)Evaluate(environment, linear, trace[t++]);
+                var tindex = System.Convert.ToInt32(Evaluate(environment, linear, trace[t]));
+                return tarray.GetValue(tindex);
+            }
             var nodes = linear.Nodes;
             at += 2;
             var left = at + nodes[at++];
@@ -448,6 +456,8 @@ class Program
             var right = at + nodes[at];
             var array = (System.Array)Evaluate(environment, linear, left);
             var index = System.Convert.ToInt32(Evaluate(environment, linear, right));
+            trace[t++] = left;
+            trace[t] = right;
             return array.GetValue(index);
         }
 
@@ -466,7 +476,7 @@ class Program
             int t;
             if (0 < trace[t = at])
             {
-                return (long)Evaluate(environment, linear, trace[at++]) + (long)Evaluate(environment, linear, trace[at]);
+                return (long)Evaluate(environment, linear, trace[t++]) + (long)Evaluate(environment, linear, trace[t]);
             }
             var nodes = linear.Nodes;
             at += 2;
@@ -484,7 +494,7 @@ class Program
             int t;
             if (0 < trace[t = at])
             {
-                return (long)Evaluate(environment, linear, trace[at++]) - (long)Evaluate(environment, linear, trace[at]);
+                return (long)Evaluate(environment, linear, trace[t++]) - (long)Evaluate(environment, linear, trace[t]);
             }
             var nodes = linear.Nodes;
             at += 2;
@@ -502,7 +512,7 @@ class Program
             int t;
             if (0 < trace[t = at])
             {
-                return (long)Evaluate(environment, linear, trace[at++]) * (long)Evaluate(environment, linear, trace[at]);
+                return (long)Evaluate(environment, linear, trace[t++]) * (long)Evaluate(environment, linear, trace[t]);
             }
             var nodes = linear.Nodes;
             at += 2;
@@ -520,7 +530,7 @@ class Program
             int t;
             if (0 < trace[t = at])
             {
-                return (long)Evaluate(environment, linear, trace[at++]) / (long)Evaluate(environment, linear, trace[at]);
+                return (long)Evaluate(environment, linear, trace[t++]) / (long)Evaluate(environment, linear, trace[t]);
             }
             var nodes = linear.Nodes;
             at += 2;
@@ -538,7 +548,7 @@ class Program
             int t;
             if (0 < trace[t = at])
             {
-                return (long)Evaluate(environment, linear, trace[at++]) % (long)Evaluate(environment, linear, trace[at]);
+                return (long)Evaluate(environment, linear, trace[t++]) % (long)Evaluate(environment, linear, trace[t]);
             }
             var nodes = linear.Nodes;
             at += 2;
@@ -556,7 +566,7 @@ class Program
             int t;
             if (0 < trace[t = at])
             {
-                return (long)Evaluate(environment, linear, trace[at++]) < (long)Evaluate(environment, linear, trace[at]);
+                return (long)Evaluate(environment, linear, trace[t++]) < (long)Evaluate(environment, linear, trace[t]);
             }
             var nodes = linear.Nodes;
             at += 2;
@@ -592,7 +602,7 @@ class Program
             return (bool)Evaluate(environment, linear, test) ? Evaluate(environment, linear, then) : Evaluate(environment, linear, @else);
         }
 
-        protected static object Assign(IEnvironment environment, Linear linear, int at)
+        protected static object Assignment(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
             var trace = linear.Trace;
@@ -711,7 +721,7 @@ class Program
             .Set(Brackets, (Evaluation)NewArray).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Enumeration)
             .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus)
             .Set(LessThan, (Evaluation)IsLessThan).Set(Query, (Evaluation)IfThenElse)
-            .Set(Equal, (Evaluation)Assign).Set(For, (Evaluation)ForLoop).Set(While, (Evaluation)WhileLoop)
+            .Set(Equal, (Evaluation)Assignment).Set(For, (Evaluation)ForLoop).Set(While, (Evaluation)WhileLoop)
             :
             (Global)environment;
 
@@ -759,7 +769,7 @@ class Program
 
     static void Main(string[] args)
     {
-        const int N = 1_000_000;
+        const int N = 10_000_000;
 
         var evaluator = new ShootoutEvaluator();
 
@@ -770,31 +780,34 @@ class Program
 
         // Cf. https://news.ycombinator.com/item?id=31427506
         // (Python 3.10 vs JavaScript thread)
-        System.Console.WriteLine("About to stress the for loop vs lexical scope 10,000,000 times...");
+        System.Console.WriteLine($"LinearLisp... About to stress the for loop vs lexical scope {N} times...");
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
         System.Console.ReadKey(true);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         long ms;
-        var acc = (long)evaluator.Evaluate(null, @"(
+        var acc = (long)evaluator.Evaluate(null, $@"(
     let
     (
-        f ( ( x ) => ( 10 * x ) )
+        N {N}
 
         acc 0
+
+        f ( ( x ) => ( acc + ( 10 * x ) ) )
     )
 
-    ( for i = 0, 10000000 :
-        ( acc = ( acc + ( f i ) ) )
+    ( for i = 0, N :
+        ( acc = ( f i ) )
     )
 )");
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"acc = {acc} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"acc = {acc} ... in {ms} ms");
 
         System.Diagnostics.Debug.Assert(acc == 499_999_950_000_000);
 
         System.Console.WriteLine();
+        System.Console.WriteLine("C# compiled vs LinearLisp, with Fib(32) computed only once, and 20! computed 1,000,000 times...");
         System.Console.WriteLine("Press a key to continue...");
         System.Console.ReadKey(true);
 
@@ -805,14 +818,14 @@ class Program
     )
 
     Fib
-)  ", out var global, out var parsed);
+)  ", out var global);
         var closure = (Closure)result;
 
         sw = System.Diagnostics.Stopwatch.StartNew();
         var fib32 = CompiledFib(32);
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(CompiledFib)}(32): {fib32} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"(C# compiled) Fib(32) = {fib32} ... in {ms:0,0} ms");
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
@@ -822,13 +835,15 @@ class Program
         var fib32bis = (long)closure.Invoke(32L);
         sw.Stop();
         ms = sw.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(ShootoutEvaluator)} Fib(32): {fib32bis} ... in {ms:0,0} ms");
+        System.Console.WriteLine($"(LinearLisp) Fib(32) = {fib32bis} ... in {ms:0,0} ms");
 
         System.Diagnostics.Debug.Assert(fib32 == fib32bis);
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
         System.Console.ReadKey(true);
+
+        const int N_fact = 1_000_000;
 
         closure = (Closure)evaluator.Evaluate(global, @"(
     let
@@ -841,13 +856,13 @@ class Program
 
         var sw1 = System.Diagnostics.Stopwatch.StartNew();
         long fact20 = 0;
-        for (var i = 0; i < N; i++)
+        for (var i = 0; i < N_fact; i++)
         {
             fact20 = CompiledFactorial(20);
         }
         sw1.Stop();
         var elapsed = sw1.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(CompiledFactorial)} 20! = {fact20} x {N:0,0} times ... in {elapsed:0,0} ms");
+        System.Console.WriteLine($"(C# compiled) 20! = {fact20} x {N_fact:0,0} times ... in {elapsed:0,0} ms");
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
@@ -855,18 +870,17 @@ class Program
 
         var sw2 = System.Diagnostics.Stopwatch.StartNew();
         long fact20bis = 0;
-        for (var i = 0; i < N; i++)
+        for (var i = 0; i < N_fact; i++)
         {
             fact20bis = (long)closure.Invoke(20L);
         }
         sw2.Stop();
         elapsed = sw2.ElapsedMilliseconds;
-        System.Console.WriteLine($"{nameof(ShootoutEvaluator)} 20! = {fact20bis} x {N:0,0} times ... in {elapsed:0,0} ms");
-
+        System.Console.WriteLine($"(LinearLisp) 20! = {fact20bis} x {N_fact:0,0} times ... in {elapsed:0,0} ms");
         System.Diagnostics.Debug.Assert(fact20 == fact20bis);
 
         System.Console.WriteLine();
-        System.Console.WriteLine("Press a key... to exit!");
+        System.Console.WriteLine("Press a key... (to exit LinearLisp)");
         System.Console.ReadKey(true);
     }
 }

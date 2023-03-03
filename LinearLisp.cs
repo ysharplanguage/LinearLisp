@@ -420,7 +420,8 @@ class Program
         protected static object NewArray(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            int token = nodes[at += 2];
+            at += 1;
+            int token = nodes[at++];
             var length = token - 1;
             object[] array;
             if (token == 3 && nodes[token = (token = at + 1) + nodes[token]] == 0 && (token = nodes[token + 1]) < -2 && -token < nodes[0])
@@ -594,23 +595,46 @@ class Program
         protected static object Assign(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
+            var trace = linear.Trace;
+            Symbol symbol;
+            object result;
+            int t;
+            if (0 < linear.Trace[t = at])
+            {
+                result = Evaluate(environment, linear, trace[t++]);
+                symbol = new Symbol(trace[t++]);
+                if (0 <= (t = trace[t]))
+                {
+                    var index = System.Convert.ToInt32(Evaluate(environment, linear, t));
+                    var array = (System.Array)environment.Get(symbol);
+                    array.SetValue(result, index);
+                }
+                else
+                {
+                    environment.Set(symbol, result, true);
+                }
+                return result;
+            }
             at += 2;
             var left = at + nodes[at++];
             var oper = at + nodes[at++];
             var right = at + nodes[at];
-            var result = Evaluate(environment, linear, right);
+            result = Evaluate(environment, linear, right);
             if (left < oper - 2)
             {
+                trace[t++] = right;
                 at += 4;
-                var symbol = new Symbol(nodes[at + nodes[at++] + 1]);
+                symbol = new Symbol(trace[t++] = nodes[at + nodes[at++] + 1]);
                 at++;
-                var index = System.Convert.ToInt32(Evaluate(environment, linear, at + nodes[at]));
+                var index = System.Convert.ToInt32(Evaluate(environment, linear, trace[t] = at + nodes[at]));
                 var array = (System.Array)environment.Get(symbol);
                 array.SetValue(result, index);
             }
             else
             {
-                var symbol = new Symbol(nodes[left + 1]);
+                trace[t++] = right;
+                symbol = new Symbol(trace[t++] = nodes[left + 1]);
+                trace[t] = -1;
                 environment.Set(symbol, result, true);
             }
             return result;

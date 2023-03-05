@@ -133,68 +133,88 @@ namespace System.Symbolics
     }
     public delegate object Inline(IEnvironment site, int at);
     public delegate object Invoke(params object[] arguments);
-    public sealed class Closure : LinearEvaluator
+    public abstract class Closure : LinearEvaluator
     {
-        private readonly Inline[] inlined; private readonly Invoke[] invoked; private readonly Linear linear; public readonly IEnvironment Environment; public readonly Symbol[] Parameters; public readonly int Body;
-        private object Inline0(IEnvironment site, int at) => Evaluate(new Formal0(Environment), linear, Body);
-        private object Inline1(IEnvironment site, int at)
+        protected readonly Linear linear; public readonly IEnvironment Environment; public readonly Symbol[] Parameters; public readonly int Body;
+        protected Closure(IEnvironment environment, Symbol[] parameters, Linear linear, int body) { this.linear = linear; Environment = environment; Parameters = parameters; Body = body; }
+        internal abstract object Inline(IEnvironment site, int at, int actuals);
+        public abstract object Invoke(params object[] arguments);
+    }
+    public sealed class Closure0 : Closure
+    {
+        internal override object Inline(IEnvironment site, int at, int actuals) => Evaluate(new Formal0(Environment), linear, Body);
+        public Closure0(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
+        public override object Invoke(params object[] arguments) => Evaluate(new Formal0(Environment), linear, Body);
+    }
+    public sealed class Closure1 : Closure
+    {
+        internal override object Inline(IEnvironment site, int at, int actuals)
         {
             var parameters = Parameters;
             var bound = new Formal1(parameters, Environment);
-            bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
-        private object Inline2(IEnvironment site, int at)
+        public Closure1(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
+        public override object Invoke(params object[] arguments) => Evaluate(new Formal1(Parameters, arguments, Environment), linear, Body);
+    }
+    public sealed class Closure2 : Closure
+    {
+        internal override object Inline(IEnvironment site, int at, int actuals)
         {
             var parameters = Parameters;
             var bound = new Formal2(parameters, Environment);
-            var nodes = linear.Nodes;
-            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(1, Evaluate(site, linear, at + nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
-        private object Inline3(IEnvironment site, int at)
+        public Closure2(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
+        public override object Invoke(params object[] arguments) => Evaluate(new Formal2(Parameters, arguments, Environment), linear, Body);
+    }
+    public sealed class Closure3 : Closure
+    {
+        internal override object Inline(IEnvironment site, int at, int actuals)
         {
             var parameters = Parameters;
             var bound = new Formal3(parameters, Environment);
-            var nodes = linear.Nodes;
-            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(1, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(2, Evaluate(site, linear, at + nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at + linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
-        private object Inline4(IEnvironment site, int at)
+        public Closure3(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
+        public override object Invoke(params object[] arguments) => Evaluate(new Formal3(Parameters, arguments, Environment), linear, Body);
+    }
+    public sealed class Closure4 : Closure
+    {
+        internal override object Inline(IEnvironment site, int at, int actuals)
         {
             var parameters = Parameters;
             var bound = new Formal4(parameters, Environment);
-            var nodes = linear.Nodes;
-            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(1, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(2, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(3, Evaluate(site, linear, at + nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (3 < actuals) bound.Set(3, Evaluate(site, linear, at + linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
-        private object Inline5(IEnvironment site, int at)
+        public Closure4(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
+        public override object Invoke(params object[] arguments) => Evaluate(new Formal4(Parameters, arguments, Environment), linear, Body);
+    }
+    public sealed class Closure5 : Closure
+    {
+        internal override object Inline(IEnvironment site, int at, int actuals)
         {
             var parameters = Parameters;
             var bound = new Formal5(parameters, Environment);
-            var nodes = linear.Nodes;
-            bound.Set(0, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(1, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(2, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(3, Evaluate(site, linear, at + nodes[at++]));
-            bound.Set(4, Evaluate(site, linear, at + nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (3 < actuals) bound.Set(3, Evaluate(site, linear, at + linear.Nodes[at++]));
+            if (4 < actuals) bound.Set(4, Evaluate(site, linear, at + linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
-        internal object Invoke0(params object[] arguments) => Evaluate(new Formal0(Environment), linear, Body);
-        internal object Invoke1(params object[] arguments) => Evaluate(new Formal1(Parameters, arguments, Environment), linear, Body);
-        internal object Invoke2(params object[] arguments) => Evaluate(new Formal2(Parameters, arguments, Environment), linear, Body);
-        internal object Invoke3(params object[] arguments) => Evaluate(new Formal3(Parameters, arguments, Environment), linear, Body);
-        internal object Invoke4(params object[] arguments) => Evaluate(new Formal4(Parameters, arguments, Environment), linear, Body);
-        internal object Invoke5(params object[] arguments) => Evaluate(new Formal5(Parameters, arguments, Environment), linear, Body);
-        internal object Inline(IEnvironment site, int at, int arity) => inlined[arity](site, at);
-        public Closure(IEnvironment environment, Symbol[] parameters, Linear linear, int at) { inlined = new Inline[6] { Inline0, Inline1, Inline2, Inline3, Inline4, Inline5 }; invoked = new Invoke[6] { Invoke0, Invoke1, Invoke2, Invoke3, Invoke4, Invoke5 }; this.linear = linear; Environment = environment; Parameters = parameters; Body = at; }
-        public object Invoke(params object[] arguments) => invoked[arguments.Length](arguments);
+        public Closure5(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
+        public override object Invoke(params object[] arguments) => Evaluate(new Formal5(Parameters, arguments, Environment), linear, Body);
     }
     public delegate object Evaluation(IEnvironment environment, Linear linear, int at);
     public class LinearEvaluator
@@ -313,7 +333,7 @@ namespace System.Symbolics
         }
         public object Evaluate(IEnvironment environment, Linear linear) => Evaluate(environment, linear, 1);
     }
-    public class Evaluator : LinearEvaluator
+    public class Interpreter : LinearEvaluator
     {
         protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 7);
         protected static object Definition(IEnvironment environment, Linear linear, int at)
@@ -344,12 +364,14 @@ namespace System.Symbolics
             }
             return Evaluate(environment, linear, body);
         }
+        private static readonly Type[] Closures = new Type[6] { typeof(Closure0), typeof(Closure1), typeof(Closure2), typeof(Closure3), typeof(Closure4), typeof(Closure5) };
         protected static object Abstraction(IEnvironment environment, Linear linear, int at)
         {
+
             var nodes = linear.Nodes;
             at += 2;
-            var head = at + nodes[at++]; at++; var body = at + nodes[at]; var args = (Symbol[])linear.Value[-nodes[head + 1]];
-            return new Closure(environment, args, linear, body);
+            var head = at + nodes[at++]; at++; var body = at + nodes[at]; var parameters = (Symbol[])linear.Value[-nodes[head + 1]];
+            return Activator.CreateInstance(Closures[parameters.Length], environment, parameters, linear, body);
         }
         protected virtual object Token(object context, string input, ref int offset, out int length) { length = 0; return Symbol.EOF; }
         protected virtual object Parse(object context, string input, object current, ref int offset, int matched)
@@ -379,9 +401,9 @@ namespace System.Symbolics
 
 class Program
 {
-    // A linear evaluator which knows whitespace, signed 64bit integers, and the core lambda calculus (let and lambda forms only),
+    // An interpreter which knows whitespace, signed 64bit integers, and the core lambda calculus (let and lambda forms only),
     // but no bindings of programmer-defined identifiers yet
-    public class DerivedEvaluator : Evaluator
+    public class DerivedInterpreter : Interpreter
     {
         private SymbolProvider symbolProvider;
         protected static readonly Regex WhiteSpace = new Regex("\\s+", RegexOptions.Compiled);
@@ -417,12 +439,12 @@ class Program
         public override string Print(object context, object expression) => expression is int n ? $"{n}" : base.Print(context, expression);
     }
 
-    // A linear evaluator which knows: whitespace, signed 64bit integers, the five operations (+, -, *, /, and %),
+    // An interpreter which knows: whitespace, signed 64bit integers, the five operations (+, -, *, /, and %),
     // the core lambda calculus (let and lambda forms only), the ternary if-then-else conditional operator - ie: ( condition ? ifTrue : ifFalse ) -
     // and lexically-scoped bindings of programmer-defined identifiers, as well as lexically-scoped variable assignments
     // (eg, for impure, side effectful functions);
     // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
-    public class ShootoutEvaluator : DerivedEvaluator
+    public class LinearLisp : DerivedInterpreter
     {
         private Symbol brackets, atSign, comma, plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for, @while;
         protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
@@ -782,7 +804,7 @@ class Program
     {
         const int N = 10_000_000;
 
-        var evaluator = new ShootoutEvaluator();
+        var evaluator = new LinearLisp();
 
         System.Console.WriteLine("( For history, see also: http://dada.perl.it/shootout/fibo.html )");
         System.Console.WriteLine();

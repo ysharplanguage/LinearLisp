@@ -19,7 +19,7 @@ namespace System.Symbolics
     }
     public sealed class Formal0 : IFormal
     {
-        public Formal0(IEnvironment parent) => Parent = parent;
+        public Formal0(IEnvironment parent) => Parent = parent ?? throw new ArgumentNullException(nameof(parent), "Cannot be null");
         public object Get(Symbol symbol) => Parent.Get(symbol);
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value) { Parent.Set(symbol, value); return this; }
@@ -31,7 +31,7 @@ namespace System.Symbolics
     {
         private Symbol symbol; private object value;
         public Formal1(Symbol[] parameters, IEnvironment parent) { symbol = parameters[0]; Parent = parent; }
-        public Formal1(Symbol[] parameters, object[] values, IEnvironment parent) { symbol = parameters[0]; value = values[0]; Parent = parent; }
+        public Formal1(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) => value = values[0];
         public object Get(Symbol symbol) => symbol.Equals(this.symbol) ? value : Parent.Get(symbol);
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value) { if (symbol.Equals(this.symbol)) { this.value = value; return this; } else return Parent.Set(symbol, value); }
@@ -43,7 +43,7 @@ namespace System.Symbolics
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[2];
         public Formal2(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
-        public Formal2(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 2) this.values[i] = values[i]; Parent = parent; }
+        public Formal2(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) { var i = -1; while (++i < 2) this.values[i] = values[i]; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 2) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value) { var i = 2; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
@@ -67,7 +67,7 @@ namespace System.Symbolics
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[4];
         public Formal4(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
-        public Formal4(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 4) this.values[i] = values[i]; Parent = parent; }
+        public Formal4(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) { var i = -1; while (++i < 4) this.values[i] = values[i]; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 4) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value) { var i = 4; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
@@ -79,7 +79,7 @@ namespace System.Symbolics
     {
         private readonly Symbol[] symbols; private readonly object[] values = new object[5];
         public Formal5(Symbol[] parameters, IEnvironment parent) { symbols = parameters; Parent = parent; }
-        public Formal5(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 5) this.values[i] = values[i]; Parent = parent; }
+        public Formal5(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) { var i = -1; while (++i < 5) this.values[i] = values[i]; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 5) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
         public IEnvironment Set(Symbol symbol, object value) { var i = 5; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
@@ -446,7 +446,7 @@ class Program
     // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
     public class LinearLisp : DerivedInterpreter
     {
-        private Symbol brackets, atSign, comma, plus, minus, times, divideBy, percent, lessThan, query, colon, equal, @for, @while;
+        private Symbol brackets, pound, atSign, comma, plus, minus, times, divideBy, percent, and, lessThan, lessThanOrEqual, query, colon, equal, @for, @while;
         protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
         protected static readonly Regex Identifier = new Regex("[A-Za-z_][A-Za-z_0-9]*", RegexOptions.Compiled);
 
@@ -470,6 +470,23 @@ class Program
                 while (0 < (it = nodes[++at])) array[i++] = Evaluate(environment, linear, it += at);
             }
             return array;
+        }
+
+        protected static object LengthOf(IEnvironment environment, Linear linear, int at)
+        {
+            var trace = linear.Trace;
+            int targ, t;
+            if (0 < (targ = trace[t = at]))
+            {
+                var tarray = (System.Array)Evaluate(environment, linear, targ);
+                return tarray.LongLength;
+            }
+            var nodes = linear.Nodes;
+            at += 3;
+            var arg = at + nodes[at];
+            trace[t] = arg;
+            var array = (System.Array)Evaluate(environment, linear, arg);
+            return array.LongLength;
         }
 
         protected static object Access(IEnvironment environment, Linear linear, int at)
@@ -593,6 +610,24 @@ class Program
             return (long)Evaluate(environment, linear, left) % (long)Evaluate(environment, linear, right);
         }
 
+        protected static object LogicalAnd(IEnvironment environment, Linear linear, int at)
+        {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (bool)Evaluate(environment, linear, trace[t++]) && (bool)Evaluate(environment, linear, trace[t]);
+            }
+            var nodes = linear.Nodes;
+            at += 2;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
+            return (bool)Evaluate(environment, linear, left) && (bool)Evaluate(environment, linear, right);
+        }
+
         protected static object IsLessThan(IEnvironment environment, Linear linear, int at)
         {
             var trace = linear.Trace;
@@ -609,6 +644,24 @@ class Program
             trace[t++] = left;
             trace[t] = right;
             return (long)Evaluate(environment, linear, left) < (long)Evaluate(environment, linear, right);
+        }
+
+        protected static object IsLessThanOrEqual(IEnvironment environment, Linear linear, int at)
+        {
+            var trace = linear.Trace;
+            int t;
+            if (0 < trace[t = at])
+            {
+                return (long)Evaluate(environment, linear, trace[t++]) <= (long)Evaluate(environment, linear, trace[t]);
+            }
+            var nodes = linear.Nodes;
+            at += 2;
+            var left = at + nodes[at++];
+            at++;
+            var right = at + nodes[at];
+            trace[t++] = left;
+            trace[t] = right;
+            return (long)Evaluate(environment, linear, left) <= (long)Evaluate(environment, linear, right);
         }
 
         protected static object IfThenElse(IEnvironment environment, Linear linear, int at)
@@ -750,18 +803,18 @@ class Program
             return Symbol.EOF;
         }
 
-        protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(Times) ? (Global)environment
-            .Set(Brackets, (Evaluation)NewArray).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Enumeration)
-            .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus)
-            .Set(LessThan, (Evaluation)IsLessThan).Set(Query, (Evaluation)IfThenElse)
+        protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(Pound) ? (Global)environment
+            .Set(Brackets, (Evaluation)NewArray).Set(Pound, (Evaluation)LengthOf).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Enumeration)
+            .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus).Set(And, (Evaluation)LogicalAnd)
+            .Set(LessThan, (Evaluation)IsLessThan).Set(LessThanOrEqual, (Evaluation)IsLessThanOrEqual).Set(Query, (Evaluation)IfThenElse)
             .Set(Equal, (Evaluation)Assignment).Set(For, (Evaluation)ForLoop).Set(While, (Evaluation)WhileLoop)
             :
             (Global)environment;
 
         public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context)
-            .Builtin("[]", out brackets).Builtin("@", out atSign).Builtin(",", out comma)
-            .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent)
-            .Builtin("<", out lessThan).Builtin("?", out query).Builtin(":", out colon)
+            .Builtin("[]", out brackets).Builtin("#", out pound).Builtin("@", out atSign).Builtin(",", out comma)
+            .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent).Builtin("&&", out and)
+            .Builtin("<", out lessThan).Builtin("<=", out lessThanOrEqual).Builtin("?", out query).Builtin(":", out colon)
             .Builtin("=", out equal).Builtin("for", out @for).Builtin("while", out @while);
 
         public override string Print(object context, object expression) => expression is string s ? $"\"{s.Replace("\"", "\\\"")}\"" : expression != null ? base.Print(context, expression) : "null";
@@ -782,7 +835,11 @@ class Program
 
         public Symbol Percent => percent;
 
+        public Symbol And => and;
+
         public Symbol LessThan => lessThan;
+
+        public Symbol LessThanOrEqual => lessThanOrEqual;
 
         public Symbol Query => query;
 
@@ -793,6 +850,8 @@ class Program
         public Symbol For => @for;
 
         public Symbol While => @while;
+
+        public Symbol Pound => pound;
     }
 
     static long CompiledFactorial(long n) => 0 < n ? n * CompiledFactorial(n - 1) : 1;
@@ -912,8 +971,99 @@ class Program
         System.Console.WriteLine($"(LinearLisp) 20! = {fact20bis} x {N_fact:0,0} times ... in {elapsed:0,0} ms");
         System.Diagnostics.Debug.Assert(fact20 == fact20bis);
 
+        var _16kInts = System.IO.File.ReadAllText(@"16K-INTS.txt").Split(",").Select(s => long.Parse(s)).ToArray();
+        var _10kIntsList = new List<long>(_16kInts);
+        _10kIntsList.Sort();
+        var sorted16kInts = _10kIntsList.ToArray();
+
         System.Console.WriteLine();
-        System.Console.WriteLine("Press a key... (to exit LinearLisp)");
+        System.Console.WriteLine($"C# compiled vs LinearLisp bubble-sort of {_16kInts.Length} integers...");
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        void CompiledBubbleSort(long[] array)
+        {
+            var more = true;
+            for (var i = 1; (i <= (array.Length - 1)) && more; i++)
+            {
+                more = false;
+                for (var j = 0; j < (array.Length - 1); j++)
+                {
+                    if (array[j + 1] < array[j])
+                    {
+                        var temp = array[j];
+                        array[j] = array[j + 1];
+                        array[j + 1] = temp;
+                        more = true;
+                    }
+                }
+            }
+        }
+
+        var bubbleSort = (Closure)evaluator.Evaluate(null, @"(
+    let
+    (
+        BubbleSort ( ( array ) =>
+            (
+                let ( more 1    i -1    temp -1 )
+                (
+                    ( i = 0 ),
+                    ( while ( ( i = ( i + 1 ) ) , ( ( i < ( # array ) ) && ( 0 < more ) ) )
+                        (
+                            ( more = 0 ),
+                            ( for j = 0, ( ( # array ) - 1 ):
+                                (
+                                    ( ( array @ ( j + 1 ) ) < ( array @ j ) ) ?
+                                    (
+                                        ( temp = ( array @ j ) ),
+                                        ( ( array @ j ) = ( array @ ( j + 1 ) ) ),
+                                        ( ( array @ ( j + 1 ) )  = temp  ),
+                                        ( more = 1 )
+                                    )
+                                    :
+                                    array
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+    BubbleSort
+)  ");
+        var _16kIntsCopy = new long[_16kInts.Length];
+        System.Array.Copy(_16kInts, _16kIntsCopy, _16kInts.Length);
+        sw = System.Diagnostics.Stopwatch.StartNew();
+        CompiledBubbleSort(_16kIntsCopy);
+        sw.Stop();
+        ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"(C# compiled) bubble-sort of {_16kIntsCopy.Length} integers in {ms:0,0} ms...");
+        System.Console.WriteLine($"first... {_16kIntsCopy[0]}");
+        System.Console.WriteLine($"last ... {_16kIntsCopy[_16kIntsCopy.Length - 1]}");
+        System.Diagnostics.Debug.Assert(_16kIntsCopy[0] == 56_051L);
+        System.Diagnostics.Debug.Assert(_16kIntsCopy[_16kIntsCopy.Length - 1] == 2_147_471_310L);
+        System.Diagnostics.Debug.Assert(_16kIntsCopy.SequenceEqual(sorted16kInts));
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        System.Array.Copy(_16kInts, _16kIntsCopy, _16kInts.Length);
+        sw = System.Diagnostics.Stopwatch.StartNew();
+        bubbleSort.Invoke(_16kIntsCopy);
+        sw.Stop();
+        ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"(LinearLisp) bubble-sort of {_16kIntsCopy.Length} integers in {ms:0,0} ms...");
+        System.Console.WriteLine($"first... {_16kIntsCopy[0]}");
+        System.Console.WriteLine($"last ... {_16kIntsCopy[_16kIntsCopy.Length - 1]}");
+        System.Diagnostics.Debug.Assert(_16kIntsCopy[0] == 56_051L);
+        System.Diagnostics.Debug.Assert(_16kIntsCopy[_16kIntsCopy.Length - 1] == 2_147_471_310L);
+        System.Diagnostics.Debug.Assert(_16kIntsCopy.SequenceEqual(sorted16kInts));
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key... to exit LinearLisp");
         System.Console.ReadKey(true);
     }
 }

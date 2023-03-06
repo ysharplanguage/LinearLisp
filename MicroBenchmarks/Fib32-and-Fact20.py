@@ -32,4 +32,5 @@ for i in range(0, 1000000):
 	fact20 = Fact(20)
 elapsed = elapsed_time(t0)
 print("20! = " + str(fact20) + " x 1,000,000 times in " + str(elapsed) + " ms")
-print()
+print("(Press return to exit)")
+input()

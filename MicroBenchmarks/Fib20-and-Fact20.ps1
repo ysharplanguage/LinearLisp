@@ -11,6 +11,7 @@ function Fact([long]$n) {
   if (1 -lt $n) { $n * (Fact ($n - 1)) } else { 1 }
 }
 
+Write-Host ""
 Write-Host "PowerShell... About to compute Fib(20) (only once)..."
 Write-Host "(Press return)"
 [System.Console]::ReadLine()
@@ -36,4 +37,5 @@ for ($i = 0; $i -lt 1000; $i++)
 $sw.Stop()
 $elapsed = $sw.ElapsedMilliseconds
 Write-Host "20! = $fact20 in $elapsed ms"
-Write-Host ""
+Write-Host "(Press return to exit)"
+[System.Console]::ReadLine()

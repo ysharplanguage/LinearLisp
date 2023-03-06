@@ -20,4 +20,5 @@ for ($i = 0; $i -lt $N; $i++)
 $sw.Stop()
 $elapsed = $sw.ElapsedMilliseconds
 Write-Host "acc = $acc in $elapsed ms"
-Write-Host ""
+Write-Host "(Press return to exit)"
+[System.Console]::ReadLine()

@@ -14,4 +14,5 @@ for(var i = 0; i < N; i++) acc = f(i);
 elapsed = new Date().valueOf() - t0;
 
 WScript.StdOut.WriteLine("acc = " + acc.toString() + " in " + elapsed.toString() + " ms");
-WScript.StdOut.WriteLine();
+WScript.StdOut.WriteLine("(Press return to exit)");
+WScript.StdIn.ReadLine();

@@ -2,13 +2,15 @@
 
 cscript //nologo Fib32-and-Fact20.js
 
-Fib32-and-Fact20.py
-
 cscript //nologo For-Loop-vs-Lexical-Scope-Stress.js
 
-For-Loop-vs-Lexical-Scope-Stress.py
+cscript //nologo Bubble-Sort-16k-Integers.js
 
 dotnet ..\LinearLisp\bin\Debug\net6.0\LinearLisp.dll
+
+Fib32-and-Fact20.py
+
+For-Loop-vs-Lexical-Scope-Stress.py
 
 powershell .\Fib20-and-Fact20.ps1
 

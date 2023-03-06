@@ -22,4 +22,5 @@ for i in range(0, N):
 	acc = f(i)
 elapsed = elapsed_time(t0)
 print("acc = " + str(acc) + " in " + str(elapsed) + " ms")
-print()
+print("(Press return to exit)")
+input()

@@ -4,13 +4,17 @@ cscript //nologo Fib32-and-Fact20.js
 
 cscript //nologo For-Loop-vs-Lexical-Scope-Stress.js
 
-rem cscript //nologo Bubble-Sort-16k-Integers.js
+cscript //nologo Eratosthenes-Sieve.js
 
-dotnet ..\LinearLisp\bin\Debug\net6.0\LinearLisp.dll
+rem cscript //nologo Bubble-Sort-16k-Integers.js
 
 Fib32-and-Fact20.py
 
 For-Loop-vs-Lexical-Scope-Stress.py
+
+Eratosthenes-Sieve.py
+
+dotnet ..\LinearLisp\bin\Debug\net6.0\LinearLisp.dll
 
 powershell .\Fib20-and-Fact20.ps1
 

@@ -259,7 +259,7 @@ namespace System.Symbolics
                 var i = -1;
                 while (++i < suffix)
                 {
-                    if ((arg = nodes[it]) == 2 && 0 < (bin = -nodes[it + 1]) && bin < nodes[0])
+                    if ((arg = nodes[it]) == 2 && 0 < (bin = -nodes[it + 1]) && bin < nodes[0] && value[bin] != null)
                     {
                         wired[at] = evaluate = (Evaluation)value[bin]; break;
                     }
@@ -436,19 +436,51 @@ class Program
     // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
     public class LinearLisp : DerivedInterpreter
     {
-        private Symbol brackets, pound, atSign, comma, plus, minus, times, divideBy, percent, and, lessThan, lessThanOrEqual, query, colon, equal, @for, @while;
+        private Symbol ellipsis, colon, brackets, pound, atSign, comma, plus, minus, times, divideBy, percent, and, lessThan, lessThanOrEqual, query, equal, @for, @while;
         protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
         protected static readonly Regex Identifier = new Regex("[A-Za-z_][A-Za-z_0-9]*", RegexOptions.Compiled);
+
+        protected static object NewList(IEnvironment environment, Linear linear, int at)
+        {
+            var nodes = linear.Nodes;
+            var length = nodes[at + 1] - 1;
+            var value = at + 2;
+            var token = nodes[at += 4];
+            List<object> list;
+            if (token == 2 && (token = nodes[at + 1]) < 0 && -token < nodes[0])
+            {
+                at += 2; int count; list = new List<object>(count = System.Convert.ToInt32(Evaluate(environment, linear, at)));
+                var filler = Evaluate(environment, linear, value);
+                for (var i = 0; i < count; i++) list.Add(filler);
+            }
+            else
+            {
+                var i = 0; list = new List<object>(length);
+                while (i < length) { list.Add(Evaluate(environment, linear, at)); at += nodes[at]; i++; }
+            }
+            return list;
+        }
+
+        protected static object ListAdd(IEnvironment environment, Linear linear, int at)
+        {
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
+            var list = (List<object>)Evaluate(environment, linear, left);
+            list.Add(Evaluate(environment, linear, right));
+            return list;
+        }
 
         protected static object NewArray(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            var length = nodes[at + 1];
+            var length = nodes[at + 1] - 1;
+            var value = at + 2;
             var token = nodes[at += 4];
             object[] array;
             if (token == 2 && (token = nodes[at + 1]) < 0 && -token < nodes[0])
             {
                 at += 2; array = new object[System.Convert.ToInt32(Evaluate(environment, linear, at))];
+                System.Array.Fill(array, Evaluate(environment, linear, value));
             }
             else
             {
@@ -457,38 +489,48 @@ class Program
             return array;
         }
 
-        protected static object LengthOf(IEnvironment environment, Linear linear, int at) =>
-            ((System.Array)Evaluate(environment, linear, at + 4)).LongLength;
+        protected static object CountOf(IEnvironment environment, Linear linear, int at)
+        {
+            var enumerable = Evaluate(environment, linear, at + 4);
+            if (enumerable is System.Array array)
+            {
+                return array.LongLength;
+            }
+            else
+            {
+                var list = (List<object>)enumerable;
+                return (long)list.Count;
+            }
+        }
 
         protected static object Access(IEnvironment environment, Linear linear, int at)
         {
-            /*var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                var tarray = (System.Array)Evaluate(environment, linear, trace[t++]);
-                var tindex = System.Convert.ToInt32(Evaluate(environment, linear, trace[t]));
-                return tarray.GetValue(tindex);
-            }
-            var nodes = linear.Nodes;
             at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            var array = (System.Array)Evaluate(environment, linear, left);
-            var index = System.Convert.ToInt32(Evaluate(environment, linear, right));
-            trace[t++] = left;
-            trace[t] = right;
-            return array.GetValue(index);*/
-            return null;
+            var enumerable = environment.Get(new Symbol(linear.Nodes[at + 1]));
+            if (enumerable is System.Array array)
+            {
+                return array.GetValue(System.Convert.ToInt32(Evaluate(environment, linear, at + 4)));
+            }
+            else
+            {
+                var list = (List<object>)enumerable;
+                return list[System.Convert.ToInt32(Evaluate(environment, linear, at + 4))];
+            }
         }
 
-        protected static object Enumeration(IEnvironment environment, Linear linear, int at)
+        protected static object Statements(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            object last;
+            var count = (nodes[at + 1] + 1) / 2;
+            object last = null;
+            var i = 0;
             at += 2;
-            while (true) { last = Evaluate(environment, linear, at + nodes[at]); if (0 < nodes[at + 1]) at += 2; else break; }
+            while (i < count)
+            {
+                last = Evaluate(environment, linear, at);
+                at += nodes[at] + 2;
+                i++;
+            }
             return last;
         }
 
@@ -559,10 +601,22 @@ class Program
 
         protected static object Assignment(IEnvironment environment, Linear linear, int at)
         {
+            var nodes = linear.Nodes;
+            object value;
             at += 2;
-            var symbol = new Symbol(linear.Nodes[at + 1]);
-            var value = Evaluate(environment, linear, at + 4);
-            environment.Set(symbol, value);
+            if (2 < nodes[at])
+            {
+                var array = (System.Array)environment.Get(new Symbol(nodes[at + 3]));
+                var index = System.Convert.ToInt32(Evaluate(environment, linear, at + 6));
+                value = Evaluate(environment, linear, at + nodes[at] + 2);
+                array.SetValue(value, index);
+            }
+            else
+            {
+                var symbol = new Symbol(nodes[at + 1]);
+                value = Evaluate(environment, linear, at + 4);
+                environment.Set(symbol, value);
+            }
             return value;
         }
 
@@ -616,7 +670,7 @@ class Program
                 {
                     match = Identifier.Match(input, offset);
                     length = match.Length;
-                    return match.Value != "null" ? symbols.Get(match.Value) : null;
+                    return match.Value != "null" ? (match.Value == "false" || match.Value == "true" ? match.Value == "true" : symbols.Get(match.Value)) : null;
                 }
                 if ((builtin = symbols.Builtin(input, offset)).Id < 0)
                 {
@@ -629,7 +683,7 @@ class Program
         }
 
         protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(Pound) ? (Global)environment
-            .Set(Brackets, (Evaluation)NewArray).Set(Pound, (Evaluation)LengthOf).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Enumeration)
+            .Set(Ellipsis, (Evaluation)NewList).Set(Colon, (Evaluation)ListAdd).Set(Brackets, (Evaluation)NewArray).Set(Pound, (Evaluation)CountOf).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Statements)
             .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus).Set(And, (Evaluation)LogicalAnd)
             .Set(LessThan, (Evaluation)IsLessThan).Set(LessThanOrEqual, (Evaluation)IsLessThanOrEqual).Set(Query, (Evaluation)IfThenElse)
             .Set(Equal, (Evaluation)Assignment).Set(For, (Evaluation)ForLoop).Set(While, (Evaluation)WhileLoop)
@@ -637,12 +691,16 @@ class Program
             (Global)environment;
 
         public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context)
-            .Builtin("[]", out brackets).Builtin("#", out pound).Builtin("@", out atSign).Builtin(",", out comma)
+            .Builtin("...", out ellipsis).Builtin(":", out colon).Builtin("[]", out brackets).Builtin("#", out pound).Builtin("@", out atSign).Builtin(",", out comma)
             .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent).Builtin("&&", out and)
-            .Builtin("<", out lessThan).Builtin("<=", out lessThanOrEqual).Builtin("?", out query).Builtin(":", out colon)
+            .Builtin("<", out lessThan).Builtin("<=", out lessThanOrEqual).Builtin("?", out query)
             .Builtin("=", out equal).Builtin("for", out @for).Builtin("while", out @while);
 
         public override string Print(object context, object expression) => expression is string s ? $"\"{s.Replace("\"", "\\\"")}\"" : expression != null ? base.Print(context, expression) : "null";
+
+        public Symbol Ellipsis => ellipsis;
+
+        public Symbol Colon => colon;
 
         public Symbol Brackets => brackets;
 
@@ -668,8 +726,6 @@ class Program
 
         public Symbol Query => query;
 
-        public Symbol Colon => colon;
-
         public Symbol Equal => equal;
 
         public Symbol For => @for;
@@ -684,6 +740,21 @@ class Program
     static long CompiledFib(long n) =>
         n < 2 ? n : CompiledFib(n - 1) + CompiledFib(n - 2);
 
+    static List<long> GetPrimes(long n)
+    {
+        var found = new List<long>();
+        if (n <= 2) return found;
+        var prime = new bool[n];
+        for (var i = 2; i < n; i++) prime[i] = true;
+        prime[1] = prime[0] = false;
+        for (var i = 2; i * i < n; i++)
+        {
+            if (prime[i]) for (var j = i; j * i < n; j++) prime[j * i] = false;
+        }
+        for (long p = 0; p < prime.Length; p++) if (prime[p]) found.Add(p);
+        return found;
+    }
+
     static void Main(string[] args)
     {
         const int N = 10_000_000;
@@ -693,7 +764,7 @@ class Program
         System.Console.WriteLine("( For history, see also: http://dada.perl.it/shootout/fibo.html )");
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to start...");
-        System.Console.ReadKey();
+        System.Console.ReadKey(true);
 
         // Cf. https://news.ycombinator.com/item?id=31427506
         // (Python 3.10 vs JavaScript thread)
@@ -771,32 +842,107 @@ class Program
     Fact
 )");
 
-        var sw1 = System.Diagnostics.Stopwatch.StartNew();
+        sw = System.Diagnostics.Stopwatch.StartNew();
         long fact20 = 0;
         for (var i = 0; i < N_fact; i++)
         {
             fact20 = CompiledFactorial(20);
         }
-        sw1.Stop();
-        var elapsed = sw1.ElapsedMilliseconds;
+        sw.Stop();
+        var elapsed = sw.ElapsedMilliseconds;
         System.Console.WriteLine($"(C# compiled) 20! = {fact20} x {N_fact:0,0} times ... in {elapsed:0,0} ms");
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
         System.Console.ReadKey(true);
 
-        var sw2 = System.Diagnostics.Stopwatch.StartNew();
+        sw = System.Diagnostics.Stopwatch.StartNew();
         long fact20bis = 0;
         for (var i = 0; i < N_fact; i++)
         {
             fact20bis = (long)closure.Invoke(20L);
         }
-        sw2.Stop();
-        elapsed = sw2.ElapsedMilliseconds;
+        sw.Stop();
+        elapsed = sw.ElapsedMilliseconds;
         System.Console.WriteLine($"(LinearLisp) 20! = {fact20bis} x {N_fact:0,0} times ... in {elapsed:0,0} ms");
+
         System.Diagnostics.Debug.Assert(fact20 == fact20bis);
 
-        /*var _16kInts = System.IO.File.ReadAllText(@"16K-INTS.txt").Split(",").Select(s => long.Parse(s)).ToArray();
+        System.Console.WriteLine();
+        System.Console.WriteLine("C# compiled vs LinearLisp, getting all the primes below 15,485,865...");
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        result = evaluator.Evaluate(null, @"(
+    let
+    (
+        thePrimes ( ... )
+
+        GetPrimesBelow ( ( n ) =>
+            (
+                let
+                (
+                    prime ( true [] n )
+                )
+
+                (
+                    ( 2 < n ) ?
+                    (
+                        ( ( prime @ 1 ) = false ), ( ( prime @ 0 ) = false ),
+                        ( i = 2 ),
+                        ( while ( ( i * i ) < n ) (
+                                (
+                                    ( prime @ i ) ?
+                                    (
+                                        ( j = i ),
+                                        ( while ( ( j * i ) < n ) (
+                                            ( ( prime @ ( j * i ) ) = false ), ( j = ( j + 1 ) ) )
+                                        ) )
+                                    :
+                                    prime
+                                ),
+                                ( i = ( i + 1 ) )
+                        ) ),
+                        ( for p = 0, ( # prime ): ( ( prime @ p ) ? ( thePrimes : p ) : thePrimes ) )
+                    )
+                    :
+                    thePrimes
+                )
+            )
+        )
+    )
+
+    ( () => ( ( GetPrimesBelow 15485865 ), thePrimes ) )
+)  ");
+        var getPrimes = (Closure)result;
+
+        sw = System.Diagnostics.Stopwatch.StartNew();
+        var primes = GetPrimes(15_485_865L);
+        sw.Stop();
+        ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"(C# compiled) found {primes.Count} primes ... in {ms:0,0} ms");
+        System.Console.WriteLine($"first... {primes[0]}");
+        System.Console.WriteLine($"last ... {primes[primes.Count - 1]}");
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        sw = System.Diagnostics.Stopwatch.StartNew();
+        var primesBis = (List<object>)getPrimes.Invoke();
+        sw.Stop();
+        ms = sw.ElapsedMilliseconds;
+        System.Console.WriteLine($"(LinearLisp) found {primesBis.Count} primes ... in {ms:0,0} ms");
+        System.Console.WriteLine($"first... {primesBis[0]}");
+        System.Console.WriteLine($"last ... {primesBis[primesBis.Count - 1]}");
+
+        System.Diagnostics.Debug.Assert(primesBis.Cast<long>().SequenceEqual(primes));
+
+        /*System.Console.WriteLine();
+        System.Console.WriteLine("Press a key to continue...");
+        System.Console.ReadKey(true);
+
+        var _16kInts = System.IO.File.ReadAllText(@"16K-INTS.txt").Split(",").Select(s => long.Parse(s)).ToArray();
         var _10kIntsList = new List<long>(_16kInts);
         _10kIntsList.Sort();
         var sorted16kInts = _10kIntsList.ToArray();

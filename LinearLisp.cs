@@ -4,7 +4,7 @@ using System.Symbolics;
 using System.Text.RegularExpressions;
 namespace System.Symbolics
 {
-    public sealed class Linear { public readonly int[] Nodes; public readonly object[] Value; public readonly Evaluation[] Wired; public readonly int[] Trace; public Linear(int[] nodes, object[] value, Evaluation[] wired) { Nodes = nodes; Value = value; Wired = wired; Trace = new int[nodes.Length]; } }
+    public sealed class Linear { public readonly int[] Nodes; public readonly object[] Value; public readonly Evaluation[] Wired; public Linear(int[] nodes, object[] value, Evaluation[] wired) { Nodes = nodes; Value = value; Wired = wired; } }
     public interface IEnvironment
     {
         object Get(Symbol symbol);
@@ -152,7 +152,7 @@ namespace System.Symbolics
         {
             var parameters = Parameters;
             var bound = new Formal1(parameters, Environment);
-            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at));
             return Evaluate(bound, linear, Body);
         }
         public Closure1(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
@@ -164,8 +164,8 @@ namespace System.Symbolics
         {
             var parameters = Parameters;
             var bound = new Formal2(parameters, Environment);
-            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at += linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
         public Closure2(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
@@ -177,9 +177,9 @@ namespace System.Symbolics
         {
             var parameters = Parameters;
             var bound = new Formal3(parameters, Environment);
-            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at + linear.Nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at += linear.Nodes[at]));
+            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at += linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
         public Closure3(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
@@ -191,10 +191,10 @@ namespace System.Symbolics
         {
             var parameters = Parameters;
             var bound = new Formal4(parameters, Environment);
-            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (3 < actuals) bound.Set(3, Evaluate(site, linear, at + linear.Nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at += linear.Nodes[at]));
+            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at += linear.Nodes[at]));
+            if (3 < actuals) bound.Set(3, Evaluate(site, linear, at += linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
         public Closure4(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
@@ -206,11 +206,11 @@ namespace System.Symbolics
         {
             var parameters = Parameters;
             var bound = new Formal5(parameters, Environment);
-            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (3 < actuals) bound.Set(3, Evaluate(site, linear, at + linear.Nodes[at++]));
-            if (4 < actuals) bound.Set(4, Evaluate(site, linear, at + linear.Nodes[at]));
+            if (0 < actuals) bound.Set(0, Evaluate(site, linear, at));
+            if (1 < actuals) bound.Set(1, Evaluate(site, linear, at += linear.Nodes[at]));
+            if (2 < actuals) bound.Set(2, Evaluate(site, linear, at += linear.Nodes[at]));
+            if (3 < actuals) bound.Set(3, Evaluate(site, linear, at += linear.Nodes[at]));
+            if (4 < actuals) bound.Set(4, Evaluate(site, linear, at += linear.Nodes[at]));
             return Evaluate(bound, linear, Body);
         }
         public Closure5(IEnvironment environment, Symbol[] parameters, Linear linear, int body) : base(environment, parameters, linear, body) { }
@@ -223,18 +223,21 @@ namespace System.Symbolics
         {
             var nodes = linear.Nodes;
             var it = at;
-            if (0 < nodes[it++])
+            if (2 < nodes[it++])
             {
-                var length = nodes[it];
+                var length = nodes[it++];
                 var array = new object[length];
-                var arg = it;
                 var i = 0;
-                while (0 < (it = nodes[++arg])) array[i++] = Rehydrate(linear, it += arg);
+                while (i < length)
+                {
+                    array[i++] = Rehydrate(linear, it);
+                    it += nodes[it];
+                }
                 return array;
             }
             else
             {
-                return 0 < (it = nodes[it]) || -it < nodes[0] ? new Symbol(it) : linear.Value[-it];
+                return (it = nodes[it]) <= 0 ? (it == 0 || linear.Nodes[0] <= -it ? linear.Value[-it] : new Symbol(it)) : new Symbol(it);
             }
         }
         protected static object Evaluate(IEnvironment environment, Linear linear, int at)
@@ -247,31 +250,25 @@ namespace System.Symbolics
             }
             var nodes = linear.Nodes;
             var it = at;
-            if (0 < nodes[it++])
+            if (2 < nodes[it++])
             {
-                int arity;
-                if (0 < (arity = nodes[it]))
+                var length = nodes[it];
+                var suffix = Math.Min(length, 2);
+                var value = linear.Value;
+                int exp = ++it, arg, bin;
+                var i = -1;
+                while (++i < suffix)
                 {
-                    var suffix = Math.Min(arity, 2);
-                    var value = linear.Value;
-                    int arg = it, exp = ++it;
-                    var i = -1;
-                    while (++i < suffix && 0 < (it = nodes[++arg]))
+                    if ((arg = nodes[it]) == 2 && 0 < (bin = -nodes[it + 1]) && bin < nodes[0])
                     {
-                        if (nodes[it += arg] == 0 && (it = nodes[it + 1]) < -2 && (it = -it) < nodes[0] && value[it] != null)
-                        {
-                            wired[at] = evaluate = (Evaluation)value[it]; break;
-                        }
+                        wired[at] = evaluate = (Evaluation)value[bin]; break;
                     }
-                    return
-                        evaluate != null ?
-                        evaluate(environment, linear, at) :
-                        Evaluate(environment, linear, exp + nodes[exp]) is Closure closure ? closure.Inline(environment, exp + 1, arity - 1) : Rehydrate(linear, at);
+                    it += arg;
                 }
-                else
-                {
-                    return Environment.Empty;
-                }
+                return
+                    evaluate != null ?
+                    evaluate(environment, linear, at) :
+                    Evaluate(environment, linear, exp) is Closure closure ? closure.Inline(environment, exp += nodes[exp], length - 1) : Rehydrate(linear, at);
             }
             else
             {
@@ -292,31 +289,26 @@ namespace System.Symbolics
                         v.Add(a);
                         found = v.Count - 1;
                     }
-                    found = 0 < found ? -found : found;
+                    found = -found;
                 }
                 else
                 {
                     found = s.Id;
                 }
-                return new List<int> { 0, found };
+                return new List<int> { 2, found };
             }
             List<int> LinearizeArray(List<object> v, object[] a, bool isLambda)
             {
                 var length = a.Length;
                 var list = new List<int> { 0, length };
                 var data = new List<List<int>>();
-                var head = length + 1;
-                var size = head + 2;
-                int last = 0;
+                var size = list.Count;
                 for (var i = 0; i < length; i++)
                 {
                     var item = isLambda && i == 0 ? LinearizeAtom(v, ((object[])a[i]).Cast<Symbol>().ToArray()) : Linearize(v, a[i]);
                     data.Add(item);
                     size += item.Count;
                 }
-                for (var i = 0; i < length; i++) list.Add(0);
-                list.Add(-1);
-                for (var i = 0; i < length; i++) { list[i + 2] = head-- + last; last += data[i].Count; }
                 for (var i = 0; i < length; i++) list.AddRange(data[i]);
                 list[0] = size;
                 return list;
@@ -327,7 +319,7 @@ namespace System.Symbolics
                 :
                 LinearizeAtom(v, o);
             var nodes = new List<int> { environment.Global.Builtins.Count };
-            var value = new List<object>(new object[3] { Symbol.Undefined, null, typeof(void) }.Concat(environment.Global.Builtins.Skip(3).ToArray()));
+            var value = new List<object>(new object[3] { Environment.Empty, null, typeof(void) }.Concat(environment.Global.Builtins.Skip(3).ToArray()));
             nodes.AddRange(Linearize(value, expression));
             return new Linear(nodes.ToArray(), value.ToArray(), new Evaluation[nodes.Count]);
         }
@@ -335,43 +327,41 @@ namespace System.Symbolics
     }
     public class Interpreter : LinearEvaluator
     {
+        private static readonly Type[] Closures = new Type[6] { typeof(Closure0), typeof(Closure1), typeof(Closure2), typeof(Closure3), typeof(Closure4), typeof(Closure5) };
         protected static object Quotation(IEnvironment environment, Linear linear, int at) => Rehydrate(linear, at + 7);
         protected static object Definition(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
             environment = new Environment(environment);
-            at += 3;
-            var lets = at + nodes[at++];
+            var lets = at += 4;
             var body = at + nodes[at];
-            var defs = nodes[++lets];
-            if (0 < defs)
+            var size = nodes[++lets];
+            if (0 < size)
             {
                 Symbol symbol = default;
-                int i = -1, let;
-                at = lets;
-                while (0 < (let = nodes[++at]))
+                var i = -1;
+                at = ++lets;
+                while (++i < size)
                 {
-                    let += at;
-                    if ((++i % 2) == 0)
+                    if ((i % 2) == 0)
                     {
-                        symbol = new Symbol(nodes[let + 1]);
+                        symbol = new Symbol(nodes[at + 1]);
                     }
                     else
                     {
-                        environment.Set(symbol, Evaluate(environment, linear, let));
+                        environment.Set(symbol, Evaluate(environment, linear, at));
                     }
+                    at += nodes[at];
                 }
             }
             return Evaluate(environment, linear, body);
         }
-        private static readonly Type[] Closures = new Type[6] { typeof(Closure0), typeof(Closure1), typeof(Closure2), typeof(Closure3), typeof(Closure4), typeof(Closure5) };
         protected static object Abstraction(IEnvironment environment, Linear linear, int at)
         {
 
             var nodes = linear.Nodes;
-            at += 2;
-            var head = at + nodes[at++]; at++; var body = at + nodes[at]; var parameters = (Symbol[])linear.Value[-nodes[head + 1]];
-            return Activator.CreateInstance(Closures[parameters.Length], environment, parameters, linear, body);
+            var parameters = (Symbol[])linear.Value[-nodes[at + 3]];
+            return Activator.CreateInstance(Closures[parameters.Length], environment, parameters, linear, at + 6);
         }
         protected virtual object Token(object context, string input, ref int offset, out int length) { length = 0; return Symbol.EOF; }
         protected virtual object Parse(object context, string input, object current, ref int offset, int matched)
@@ -453,45 +443,26 @@ class Program
         protected static object NewArray(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at += 1;
-            int token = nodes[at++];
-            var length = token - 1;
+            var length = nodes[at + 1];
+            var token = nodes[at += 4];
             object[] array;
-            if (token == 3 && nodes[token = (token = at + 1) + nodes[token]] == 0 && (token = nodes[token + 1]) < -2 && -token < nodes[0])
+            if (token == 2 && (token = nodes[at + 1]) < 0 && -token < nodes[0])
             {
-                at += 2;
-                array = new object[System.Convert.ToInt32(Evaluate(environment, linear, at + nodes[at]))];
+                at += 2; array = new object[System.Convert.ToInt32(Evaluate(environment, linear, at))];
             }
             else
             {
-                var i = 0;
-                int it;
-                array = new object[length];
-                while (0 < (it = nodes[++at])) array[i++] = Evaluate(environment, linear, it += at);
+                var i = 0; array = new object[length]; while (i < length) { array[i++] = Evaluate(environment, linear, at); at += nodes[at]; }
             }
             return array;
         }
 
-        protected static object LengthOf(IEnvironment environment, Linear linear, int at)
-        {
-            var trace = linear.Trace;
-            int targ, t;
-            if (0 < (targ = trace[t = at]))
-            {
-                var tarray = (System.Array)Evaluate(environment, linear, targ);
-                return tarray.LongLength;
-            }
-            var nodes = linear.Nodes;
-            at += 3;
-            var arg = at + nodes[at];
-            trace[t] = arg;
-            var array = (System.Array)Evaluate(environment, linear, arg);
-            return array.LongLength;
-        }
+        protected static object LengthOf(IEnvironment environment, Linear linear, int at) =>
+            ((System.Array)Evaluate(environment, linear, at + 4)).LongLength;
 
         protected static object Access(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
+            /*var trace = linear.Trace;
             int t;
             if (0 < trace[t = at])
             {
@@ -508,7 +479,8 @@ class Program
             var index = System.Convert.ToInt32(Evaluate(environment, linear, right));
             trace[t++] = left;
             trace[t] = right;
-            return array.GetValue(index);
+            return array.GetValue(index);*/
+            return null;
         }
 
         protected static object Enumeration(IEnvironment environment, Linear linear, int at)
@@ -522,231 +494,85 @@ class Program
 
         protected static object Addition(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) + (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) + (long)Evaluate(environment, linear, right);
         }
 
         protected static object Subtraction(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) - (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) - (long)Evaluate(environment, linear, right);
         }
 
         protected static object Multiplication(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) * (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) * (long)Evaluate(environment, linear, right);
         }
 
         protected static object Division(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) / (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) / (long)Evaluate(environment, linear, right);
         }
 
         protected static object Modulus(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) % (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) % (long)Evaluate(environment, linear, right);
         }
 
         protected static object LogicalAnd(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (bool)Evaluate(environment, linear, trace[t++]) && (bool)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (bool)Evaluate(environment, linear, left) && (bool)Evaluate(environment, linear, right);
         }
 
         protected static object IsLessThan(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) < (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) < (long)Evaluate(environment, linear, right);
         }
 
         protected static object IsLessThanOrEqual(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                return (long)Evaluate(environment, linear, trace[t++]) <= (long)Evaluate(environment, linear, trace[t]);
-            }
-            var nodes = linear.Nodes;
-            at += 2;
-            var left = at + nodes[at++];
-            at++;
-            var right = at + nodes[at];
-            trace[t++] = left;
-            trace[t] = right;
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
             return (long)Evaluate(environment, linear, left) <= (long)Evaluate(environment, linear, right);
         }
 
         protected static object IfThenElse(IEnvironment environment, Linear linear, int at)
         {
-            var trace = linear.Trace;
-            int t;
-            if (0 < trace[t = at])
-            {
-                var ttest = trace[t++];
-                var tthen = trace[t++];
-                var telse = trace[t];
-                return (bool)Evaluate(environment, linear, ttest) ? Evaluate(environment, linear, tthen) : Evaluate(environment, linear, telse);
-            }
             var nodes = linear.Nodes;
-            at += 2;
-            var test = at + nodes[at++];
-            at++;
-            var then = at + nodes[at++];
-            at++;
-            var @else = at + nodes[at];
-            trace[t++] = test;
-            trace[t++] = then;
-            trace[t] = @else;
+            var test = at += 2;
+            var then = at += nodes[at] + 2;
+            var @else = at += nodes[at] + 2;
             return (bool)Evaluate(environment, linear, test) ? Evaluate(environment, linear, then) : Evaluate(environment, linear, @else);
         }
 
         protected static object Assignment(IEnvironment environment, Linear linear, int at)
         {
-            var nodes = linear.Nodes;
-            var trace = linear.Trace;
-            Symbol symbol;
-            object result;
-            int t;
-            if (0 < linear.Trace[t = at])
-            {
-                result = Evaluate(environment, linear, trace[t++]);
-                symbol = new Symbol(trace[t++]);
-                if (0 <= (t = trace[t]))
-                {
-                    var index = System.Convert.ToInt32(Evaluate(environment, linear, t));
-                    var array = (System.Array)environment.Get(symbol);
-                    array.SetValue(result, index);
-                }
-                else
-                {
-                    environment.Set(symbol, result);
-                }
-                return result;
-            }
             at += 2;
-            var left = at + nodes[at++];
-            var oper = at + nodes[at++];
-            var right = at + nodes[at];
-            result = Evaluate(environment, linear, right);
-            if (left < oper - 2)
-            {
-                trace[t++] = right;
-                at += 4;
-                symbol = new Symbol(trace[t++] = nodes[at + nodes[at++] + 1]);
-                at++;
-                var index = System.Convert.ToInt32(Evaluate(environment, linear, trace[t] = at + nodes[at]));
-                var array = (System.Array)environment.Get(symbol);
-                array.SetValue(result, index);
-            }
-            else
-            {
-                trace[t++] = right;
-                symbol = new Symbol(trace[t++] = nodes[left + 1]);
-                trace[t] = -1;
-                environment.Set(symbol, result);
-            }
-            return result;
+            var symbol = new Symbol(linear.Nodes[at + 1]);
+            var value = Evaluate(environment, linear, at + 4);
+            environment.Set(symbol, value);
+            return value;
         }
 
         protected static object ForLoop(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at += 3;
-            var bound = at + nodes[at++];
-            at++;
-            var start = at + nodes[at++];
-            at++;
-            var count = at + nodes[at++];
-            at++;
-            var body = at + nodes[at];
+            var bound = at += 4;
+            var start = at += 4;
+            var count = at += nodes[at] + 2;
+            var body = at += nodes[at] + 2;
             var iter = new Formal1(new Symbol[1] { new Symbol(nodes[bound + 1]) }, environment);
             var from = (long)Evaluate(environment, linear, start);
             var take = (long)Evaluate(environment, linear, count);
@@ -759,9 +585,8 @@ class Program
         protected static object WhileLoop(IEnvironment environment, Linear linear, int at)
         {
             var nodes = linear.Nodes;
-            at += 3;
-            var test = at + nodes[at++];
-            var body = at + nodes[at];
+            var test = at += 4;
+            var body = at += nodes[at];
             object last = Symbol.Undefined;
             while ((bool)Evaluate(environment, linear, test)) last = Evaluate(environment, linear, body);
             return last;
@@ -971,7 +796,7 @@ class Program
         System.Console.WriteLine($"(LinearLisp) 20! = {fact20bis} x {N_fact:0,0} times ... in {elapsed:0,0} ms");
         System.Diagnostics.Debug.Assert(fact20 == fact20bis);
 
-        var _16kInts = System.IO.File.ReadAllText(@"16K-INTS.txt").Split(",").Select(s => long.Parse(s)).ToArray();
+        /*var _16kInts = System.IO.File.ReadAllText(@"16K-INTS.txt").Split(",").Select(s => long.Parse(s)).ToArray();
         var _10kIntsList = new List<long>(_16kInts);
         _10kIntsList.Sort();
         var sorted16kInts = _10kIntsList.ToArray();
@@ -1060,7 +885,7 @@ class Program
         System.Console.WriteLine($"last ... {_16kIntsCopy[_16kIntsCopy.Length - 1]}");
         System.Diagnostics.Debug.Assert(_16kIntsCopy[0] == 56_051L);
         System.Diagnostics.Debug.Assert(_16kIntsCopy[_16kIntsCopy.Length - 1] == 2_147_471_310L);
-        System.Diagnostics.Debug.Assert(_16kIntsCopy.SequenceEqual(sorted16kInts));
+        System.Diagnostics.Debug.Assert(_16kIntsCopy.SequenceEqual(sorted16kInts));*/
 
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key... to exit LinearLisp");

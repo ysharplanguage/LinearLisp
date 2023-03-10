@@ -873,47 +873,35 @@ class Program
         System.Console.WriteLine("Press a key to continue...");
         System.Console.ReadKey(true);
 
-        result = evaluator.Evaluate(null, @"(
-    let
-    (
-        thePrimes ( ... )
-
-        GetPrimesBelow ( ( n ) =>
-            (
-                let
-                (
-                    prime ( true [] n )
-                )
-
-                (
-                    ( 2 < n ) ?
+        result = evaluator.Evaluate(null, @"
+    ( let
+        (
+            thePrimes ( ... )
+            GetPrimesBelow ( ( n ) =>
                     (
-                        ( ( prime @ 1 ) = false ), ( ( prime @ 0 ) = false ),
-                        ( i = 2 ),
-                        ( while ( ( i * i ) < n ) (
+                        let ( prime ( true [] n ) )
+                            ( ( 2 < n ) ?
                                 (
-                                    ( prime @ i ) ?
-                                    (
-                                        ( j = i ),
-                                        ( while ( ( j * i ) < n ) (
-                                            ( ( prime @ ( j * i ) ) = false ), ( j = ( j + 1 ) ) )
-                                        ) )
-                                    :
-                                    prime
-                                ),
-                                ( i = ( i + 1 ) )
-                        ) ),
-                        ( for p = 0, ( # prime ): ( ( prime @ p ) ? ( thePrimes : p ) : thePrimes ) )
-                    )
-                    :
-                    thePrimes
-                )
-            )
-        )
-    )
-
-    ( () => ( ( GetPrimesBelow 15485865 ), thePrimes ) )
-)  ");
+                                    ( ( prime @ 1 ) = false ), ( ( prime @ 0 ) = false ),
+                                    ( i = 2 ),
+                                    ( while ( ( i * i ) < n ) (
+                                            (
+                                                ( prime @ i ) ?
+                                                (
+                                                    ( j = i ),
+                                                    ( while ( ( j * i ) < n ) (
+                                                        ( ( prime @ ( j * i ) ) = false ), ( j = ( j + 1 ) ) )
+                                                    ) )
+                                                :
+                                                prime
+                                            ),
+                                            ( i = ( i + 1 ) )
+                                    ) ),
+                                    ( for p = 0, ( # prime ): ( ( prime @ p ) ? ( thePrimes : p ) : thePrimes ) )
+                                )
+                            : thePrimes )
+                    ) )
+        ) ( ( ) => ( ( GetPrimesBelow 15485865 ), thePrimes ) ) )");
         var getPrimes = (Closure)result;
 
         sw = System.Diagnostics.Stopwatch.StartNew();

@@ -9,7 +9,7 @@ namespace System.Symbolics
     {
         object Get(Symbol symbol);
         bool Knows(Symbol symbol);
-        IEnvironment Set(Symbol symbol, object value);
+        IEnvironment Set(Symbol symbol, object value, bool outerLookup = true);
         IEnvironment Parent { get; }
         Global Global { get; }
     }
@@ -22,7 +22,7 @@ namespace System.Symbolics
         public Formal0(IEnvironment parent) => Parent = parent ?? throw new ArgumentNullException(nameof(parent), "Cannot be null");
         public object Get(Symbol symbol) => Parent.Get(symbol);
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public IEnvironment Set(Symbol symbol, object value) { Parent.Set(symbol, value); return this; }
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { Parent.Set(symbol, value, outerLookup); return this; }
         public IEnvironment Set(int index, object value) => throw new InvalidOperationException();
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
@@ -34,7 +34,7 @@ namespace System.Symbolics
         public Formal1(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) => value = values[0];
         public object Get(Symbol symbol) => symbol.Equals(this.symbol) ? value : Parent.Get(symbol);
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public IEnvironment Set(Symbol symbol, object value) { if (symbol.Equals(this.symbol)) { this.value = value; return this; } else return Parent.Set(symbol, value); }
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { if (symbol.Equals(this.symbol)) { this.value = value; return this; } else return Parent.Set(symbol, value, outerLookup); }
         public IEnvironment Set(int index, object value) { this.value = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
@@ -46,7 +46,7 @@ namespace System.Symbolics
         public Formal2(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) { var i = -1; while (++i < 2) this.values[i] = values[i]; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 2) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public IEnvironment Set(Symbol symbol, object value) { var i = 2; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { var i = 2; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value, outerLookup); }
         public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
@@ -58,7 +58,7 @@ namespace System.Symbolics
         public Formal3(Symbol[] parameters, object[] values, IEnvironment parent) { symbols = parameters; var i = -1; while (++i < 3) this.values[i] = values[i]; Parent = parent; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 3) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public IEnvironment Set(Symbol symbol, object value) { var i = 3; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { var i = 3; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value, outerLookup); }
         public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
@@ -70,7 +70,7 @@ namespace System.Symbolics
         public Formal4(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) { var i = -1; while (++i < 4) this.values[i] = values[i]; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 4) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public IEnvironment Set(Symbol symbol, object value) { var i = 4; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { var i = 4; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value, outerLookup); }
         public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
@@ -82,7 +82,7 @@ namespace System.Symbolics
         public Formal5(Symbol[] parameters, object[] values, IEnvironment parent) : this(parameters, parent) { var i = -1; while (++i < 5) this.values[i] = values[i]; }
         public object Get(Symbol symbol) { var i = -1; while (++i < 5) if (symbol.Equals(symbols[i])) return values[i]; return Parent.Get(symbol); }
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public IEnvironment Set(Symbol symbol, object value) { var i = 5; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value); }
+        public IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { var i = 5; while (0 <= --i) { if (symbol.Equals(symbols[i])) { values[i] = value; return this; } } return Parent.Set(symbol, value, outerLookup); }
         public IEnvironment Set(int index, object value) { values[index] = value; return this; }
         public IEnvironment Parent { get; }
         public Global Global => Parent.Global;
@@ -117,7 +117,7 @@ namespace System.Symbolics
         public Environment(IEnvironment parent) => Global = (Parent = parent)?.Global ?? (Global)this;
         public virtual object Get(Symbol symbol) => symbol.Id <= 0 ? (-symbol.Id < Global.Builtins.Count ? Global.Builtins[-symbol.Id] : Symbol.Undefined) : TryGetValue(symbol, out var value) ? value : Parent != null ? Parent.Get(symbol) : Symbol.Undefined;
         public bool Knows(Symbol symbol) => !Symbol.Undefined.Equals(Get(symbol));
-        public virtual IEnvironment Set(Symbol symbol, object value) { if (ContainsKey(symbol)) { this[symbol] = value; return this; } else return Parent.Set(symbol, value); }
+        public virtual IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { if (ContainsKey(symbol) || !outerLookup) { this[symbol] = value; return this; } else return Parent.Set(symbol, value, true); }
         public object[] Params(object[] args, int at) { var result = args.Length > at ? new object[args.Length - at] : Empty; for (var i = at; i < args.Length; i++) result[i - at] = args[i]; return result; }
         public IEnvironment Parent { get; }
         public Global Global { get; }
@@ -127,7 +127,7 @@ namespace System.Symbolics
         private object[] builtins = new object[3] { null, null, null };
         public Global(SymbolProvider symbolProvider) : base(null) => SymbolProvider = symbolProvider ?? throw new ArgumentNullException(nameof(symbolProvider), "Cannot be null");
         public override object Get(Symbol symbol) => symbol.Id <= 0 ? (-symbol.Id < builtins.Length ? builtins[-symbol.Id] : Symbol.Undefined) : TryGetValue(symbol, out var value) ? value : Symbol.Undefined;
-        public override IEnvironment Set(Symbol symbol, object value) { if (symbol.Id < 0) { var at = -symbol.Id; var upto = at + 1; if (upto > builtins.Length) Array.Resize(ref builtins, upto); builtins[at] = value; } if (0 < symbol.Id) this[symbol] = value; return this; }
+        public override IEnvironment Set(Symbol symbol, object value, bool outerLookup = true) { if (symbol.Id < 0) { var at = -symbol.Id; var upto = at + 1; if (upto > builtins.Length) Array.Resize(ref builtins, upto); builtins[at] = value; } if (0 < symbol.Id) this[symbol] = value; return this; }
         public SymbolProvider SymbolProvider { get; }
         public IReadOnlyList<object> Builtins => builtins;
     }
@@ -349,7 +349,7 @@ namespace System.Symbolics
                     }
                     else
                     {
-                        environment.Set(symbol, Evaluate(environment, linear, at));
+                        environment.Set(symbol, Evaluate(environment, linear, at), false);
                     }
                     at += nodes[at];
                 }

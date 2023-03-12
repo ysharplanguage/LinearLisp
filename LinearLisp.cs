@@ -369,7 +369,7 @@ namespace System.Symbolics
             at += 2;
             if (2 < nodes[at])
             {
-                var array = (Array)environment.Get(new Symbol(nodes[at + 3]));
+                var array = (Array)Evaluate(environment, linear, at + 2);
                 var index = Convert.ToInt32(Evaluate(environment, linear, at + 6));
                 value = Evaluate(environment, linear, at + nodes[at] + 2);
                 array.SetValue(value, index);
@@ -525,7 +525,7 @@ class Program
         protected static object Access(IEnvironment environment, Linear linear, int at)
         {
             at += 2;
-            var enumerable = environment.Get(new Symbol(linear.Nodes[at + 1]));
+            var enumerable = Evaluate(environment, linear, at);
             if (enumerable is System.Array array)
             {
                 return array.GetValue(System.Convert.ToInt32(Evaluate(environment, linear, at + 4)));
@@ -753,7 +753,8 @@ class Program
 
     static void Main(string[] args)
     {
-        const int N = 10_000_000;
+        System.Diagnostics.Stopwatch sw;
+        long ms;
 
         var evaluator = new LinearLisp();
 
@@ -762,14 +763,14 @@ class Program
         System.Console.WriteLine("Press a key to start...");
         System.Console.ReadKey(true);
 
-        // Cf. https://news.ycombinator.com/item?id=31427506
+        /*// Cf. https://news.ycombinator.com/item?id=31427506
         // (Python 3.10 vs JavaScript thread)
+        const int N = 10_000_000;
         System.Console.WriteLine($"LinearLisp... About to stress the for loop vs lexical scope {N} times...");
         System.Console.WriteLine();
         System.Console.WriteLine("Press a key to continue...");
         System.Console.ReadKey(true);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        long ms;
+        sw = System.Diagnostics.Stopwatch.StartNew();
         var acc = (long)evaluator.Evaluate(null, $@"(
     let
     (
@@ -788,7 +789,7 @@ class Program
         ms = sw.ElapsedMilliseconds;
         System.Console.WriteLine($"acc = {acc} ... in {ms} ms");
 
-        System.Diagnostics.Debug.Assert(acc == 499_999_950_000_000);
+        System.Diagnostics.Debug.Assert(acc == 499_999_950_000_000);*/
 
         System.Console.WriteLine();
         System.Console.WriteLine("C# compiled vs LinearLisp, with Fib(32) computed only once, and 20! computed 1,000,000 times...");

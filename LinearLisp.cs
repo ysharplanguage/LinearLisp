@@ -455,7 +455,7 @@ class Program
     // this evaluator thus allows to implement the recursive factorial or Fibonacci sequence function, and more...
     public class LinearLisp : DerivedInterpreter
     {
-        private Symbol ellipsis, colon, brackets, pound, atSign, comma, plus, minus, times, divideBy, percent, and, lessThan, lessThanOrEqual, query, @for, @while;
+        private Symbol ellipsis, colon, brackets, pound, atSign, comma, plus, minus, times, divideBy, percent, power, inc, dec, expand, shrink, and, lessThan, lessThanOrEqual, query, @for, @while;
         protected static readonly Regex Literal = new Regex("\"(\\\\\"|[^\"])*\"", RegexOptions.Compiled);
         protected static readonly Regex Identifier = new Regex("[A-Za-z_][A-Za-z_0-9]*", RegexOptions.Compiled);
 
@@ -588,6 +588,45 @@ class Program
             return (long)Evaluate(environment, linear, left) % (long)Evaluate(environment, linear, right);
         }
 
+        protected static object Exponent(IEnvironment environment, Linear linear, int at)
+        {
+            var left = at += 2;
+            var right = at += linear.Nodes[at] + 2;
+            return System.Convert.ToInt64(System.Math.Pow((long)Evaluate(environment, linear, left), (long)Evaluate(environment, linear, right)));
+        }
+
+        protected static object Increment(IEnvironment environment, Linear linear, int at)
+        {
+            var symbol = new Symbol(linear.Nodes[at + 3]);
+            var number = (long)environment.Get(symbol) + (long)Evaluate(environment, linear, at + 6);
+            environment.Set(symbol, number);
+            return number;
+        }
+
+        protected static object Decrement(IEnvironment environment, Linear linear, int at)
+        {
+            var symbol = new Symbol(linear.Nodes[at + 3]);
+            var number = (long)environment.Get(symbol) - (long)Evaluate(environment, linear, at + 6);
+            environment.Set(symbol, number);
+            return number;
+        }
+
+        protected static object Expanded(IEnvironment environment, Linear linear, int at)
+        {
+            var symbol = new Symbol(linear.Nodes[at + 3]);
+            var number = (long)environment.Get(symbol) * (long)Evaluate(environment, linear, at + 6);
+            environment.Set(symbol, number);
+            return number;
+        }
+
+        protected static object Shrinked(IEnvironment environment, Linear linear, int at)
+        {
+            var symbol = new Symbol(linear.Nodes[at + 3]);
+            var number = (long)environment.Get(symbol) / (long)Evaluate(environment, linear, at + 6);
+            environment.Set(symbol, number);
+            return number;
+        }
+
         protected static object LogicalAnd(IEnvironment environment, Linear linear, int at)
         {
             var left = at += 2;
@@ -682,16 +721,18 @@ class Program
 
         protected override Global AsGlobal(IEnvironment environment) => !base.AsGlobal(environment).Knows(While) ? (Global)environment
             .Set(Ellipsis, (Evaluation)NewList).Set(Colon, (Evaluation)ListAdd).Set(Brackets, (Evaluation)NewArray).Set(Pound, (Evaluation)CountOf).Set(AtSign, (Evaluation)Access).Set(Comma, (Evaluation)Statements)
-            .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus).Set(And, (Evaluation)LogicalAnd)
-            .Set(LessThan, (Evaluation)IsLessThan).Set(LessThanOrEqual, (Evaluation)IsLessThanOrEqual).Set(Query, (Evaluation)IfThenElse)
+            .Set(Plus, (Evaluation)Addition).Set(Minus, (Evaluation)Subtraction).Set(Times, (Evaluation)Multiplication).Set(DivideBy, (Evaluation)Division).Set(Percent, (Evaluation)Modulus).Set(Power, (Evaluation)Exponent)
+            .Set(Inc, (Evaluation)Increment).Set(Dec, (Evaluation)Decrement).Set(Expand, (Evaluation)Expanded).Set(Shrink, (Evaluation)Shrinked)
+            .Set(And, (Evaluation)LogicalAnd).Set(LessThan, (Evaluation)IsLessThan).Set(LessThanOrEqual, (Evaluation)IsLessThanOrEqual).Set(Query, (Evaluation)IfThenElse)
             .Set(For, (Evaluation)ForLoop).Set(While, (Evaluation)WhileLoop)
             :
             (Global)environment;
 
         public override SymbolProvider GetSymbolProvider(object context) => base.GetSymbolProvider(context)
             .Builtin("...", out ellipsis).Builtin(":", out colon).Builtin("[]", out brackets).Builtin("#", out pound).Builtin("@", out atSign).Builtin(",", out comma)
-            .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent).Builtin("&&", out and)
-            .Builtin("<", out lessThan).Builtin("<=", out lessThanOrEqual).Builtin("?", out query)
+            .Builtin("+", out plus).Builtin("-", out minus).Builtin("*", out times).Builtin("/", out divideBy).Builtin("%", out percent).Builtin("**", out power)
+            .Builtin("+=", out inc).Builtin("-=", out dec).Builtin("*=", out expand).Builtin("/=", out shrink)
+            .Builtin("&&", out and).Builtin("<", out lessThan).Builtin("<=", out lessThanOrEqual).Builtin("?", out query)
             .Builtin("for", out @for).Builtin("while", out @while);
 
         public override string Print(object context, object expression) => expression is string s ? $"\"{s.Replace("\"", "\\\"")}\"" : expression != null ? base.Print(context, expression) : "null";
@@ -717,6 +758,16 @@ class Program
         public Symbol DivideBy => divideBy;
 
         public Symbol Percent => percent;
+
+        public Symbol Power => power;
+
+        public Symbol Inc => inc;
+
+        public Symbol Dec => dec;
+
+        public Symbol Expand => expand;
+
+        public Symbol Shrink => shrink;
 
         public Symbol And => and;
 
@@ -881,18 +932,18 @@ class Program
                 (
                     ( ( prime @ 1 ) = false ), ( ( prime @ 0 ) = false ),
                     ( i = 2 ),
-                    ( while ( ( i * i ) < n ) (
+                    ( while ( ( i ** 2 ) < n ) (
                         (
                             ( prime @ i ) ?
                             (
                                 ( j = i ),
                                 ( while ( ( j * i ) < n ) (
-                                    ( ( prime @ ( j * i ) ) = false ), ( j = ( j + 1 ) ) )
+                                    ( ( prime @ ( j * i ) ) = false ), ( j += 1 ) )
                                 ) )
                             :
                             prime
                         ),
-                        ( i = ( i + 1 ) )
+                        ( i += 1 )
                     ) ),
                     ( for p = 0, ( # prime ):
                         ( ( prime @ p ) ? ( thePrimes : p ) : thePrimes )
